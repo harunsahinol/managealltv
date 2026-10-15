@@ -164,17 +164,32 @@ ihtiyacımız yok.
 
 | İhtiyaç | Çözüm |
 |---|---|
-| TV açılınca uygulamanın kendiliğinden başlaması | Açılış sinyalini dinleme (`BOOT_COMPLETED`). Android 10+ için "Diğer uygulamaların üzerinde göster" izni gerekir; TV ayarlarında yoksa kurulumda adb ile verilir. Android TV'de mümkünse uygulama ana ekran (launcher) olarak da seçilebilir |
+| TV açılınca uygulamanın kendiliğinden başlaması | **Pilot bulgusu: TV'ler bunu kendiliğinden yapmıyor.** Kumandayla açmak çoğu zaman yeniden başlatma değil, bekleme modundan uyanmadır; yalnız açılış sinyalini (`BOOT_COMPLETED`) dinlemek yetmez. Üç katmanlı çözüm: **(1)** Uygulama **ana ekran (launcher)** olur; TV hem açılışta hem uyanınca doğrudan uygulamaya gelir. Google TV'de bu yalnız Device Owner moduyla yapılabilir (aşağıda). **(2)** Arka planda çalışan bir servis ekranın açıldığını yakalayıp uygulamayı öne getirir (Android 10+ için "Diğer uygulamaların üzerinde göster" izni gerekir; TV menüsünde yoksa adb ile verilir). **(3)** TV'nin kendi "açılış uygulaması" ayarı varsa (bazı modellerde profesyonel/otel modunda) o da kullanılır |
 | Ekranın kararmaması | Uygulama ekranı açık tutar; TV'nin ekran koruyucusu kapatılır |
 | Çökme sonrası yeniden başlama | Ön plan servisi + zamanlayıcı ile kontrol |
-| Uzaktan güncelleme | Uygulama yeni APK'yı sunucudan indirir. **Cihaz sahibi (Device Owner) modunda** onaysız kurulur; bu mod hesapsız (sıfırlanmış) cihaz ister, bu yüzden en uygun olduğu yer **çubuklardır**. TV'lerde kurulum için bir onay gerekebilir; pilotta test edilecek, olmazsa Tailscale üzerinden adb ile güncellenir |
+| Uzaktan güncelleme | Uygulama yeni APK'yı sunucudan indirir. **Device Owner modunda** onaysız kurulur. Device Owner olmayan TV'de kurulum onayı gerekebilir; o durumda Tailscale üzerinden adb ile güncellenir |
 | Ekran görüntüsü | Uygulama kendi ekranının görüntüsünü alır (izin istemez); pilotta doğrulanacak |
 | Depolama | TV'lerde boş alan az olabilir. Uygulama boş alanı ölçer, bütçe dahilinde indirir, kullanılmayanı siler |
 
+**Device Owner (cihaz sahibi) modu:** Android'in tek amaçlı cihazlar için resmi yöntemi. TV başına
+bir kez, aynı Wi-Fi'daki bir bilgisayardan adb ile kurulur.
+- **Sağladıkları:** uygulamayı kalıcı ana ekran yapma, onaysız güncelleme, uzaktan yeniden başlatma.
+- **Ön koşul:** TV'de hiç hesap olmaması. TV'deki Google hesabı kaldırılır; tabela olarak
+  kullanılan TV'de Play Store'a ihtiyaç yok.
+- **Bedeli:** TV başka amaçla (yayın izleme, YouTube) kullanılamaz. Yalnız tabela olarak kullanılan
+  TV'lere uygundur.
+
 ### 7.3 TV'nin kendisi (uygulamanın kontrol edemediği şeyler)
 
-- **Otomatik kapanma:** Birçok TV, kumandaya dokunulmazsa birkaç saat sonra (AB enerji
-  düzenlemesi gereği) kendini kapatır. Kurulumda TV menüsünden **kapatılmalı**.
+- **Otomatik kapanma:** Birçok TV, kumandaya dokunulmazsa birkaç saat sonra (AB / Energy Star
+  enerji kuralları gereği) kendini kapatır. Ayar genelde "Güç ve enerji" menüsünde "Boşta TV
+  bekleme", "Otomatik kapanma" ya da "Hareketsizlik zamanlayıcısı" adıyla durur ve kurulumda
+  **kapatılmalıdır**.
+  - **Pilot bulgusu:** bir TV'de bu ayar menüde yok. Bazı modellerde ayar kilitli ya da yalnız
+    profesyonel/otel modunda açılıyor; model bazında araştırılmalı.
+  - Uygulama bu zamanlayıcıyı kapatamaz, çünkü bu bir sistem ayarı.
+  - Son çare: zamanlayıcıyı birkaç saatte bir kumanda tuşuyla sıfırlayan küçük bir kızılötesi
+    (IR) verici ya da TV'nin değiştirilmesi.
 - **TV'yi açıp kapatmak:** Normal bir uygulama TV'yi bekleme modundan açamaz. Açılış ve kapanış
   için TV'nin **kendi zamanlayıcısı** kullanılır, ya da TV sürekli açık bırakılır.
 - **Açılış kaynağı:** Eski TV'lerde açılışta çubuğun takılı olduğu HDMI girişi seçili olmalı.
@@ -217,7 +232,7 @@ Hepsi farklı olduğu için:
 | Dağıtım | **Docker Compose** | Tek komutla kurulum ve güncelleme |
 | Yedekleme | Gece `pg_dump` + medya klasörünün başka bir diske/makineye kopyası | Ücretsiz |
 | İzleme (opsiyonel) | Uptime Kuma | Sunucu erişilemezse bildirim |
-| Bakım erişimi (opsiyonel) | **Tailscale** (ücretsiz plan) | Sunucuya SSH ve çubuklara adb, port açmadan |
+| Bakım erişimi (opsiyonel) | **Tailscale** (ücretsiz plan) | Sunucuya SSH, TV'lere adb; port açmadan |
 | Oynatıcı | **Kotlin** + Media3 + OkHttp | §7.1 |
 
 ### 8.3 Protokolün paylaşılması
@@ -467,8 +482,9 @@ Her TV için bir kez yapılır:
 
 | Risk | Önlem |
 |---|---|
-| Bazı TV markaları uygulamayı açılışta başlatmıyor ya da arka planda kapatıyor | Faz 0 pilotu; aşılamazsa o TV'ye çubuk |
-| TV'lerde onaysız uygulama güncellemesi mümkün olmayabilir | Çubuklarda Device Owner; TV'lerde Tailscale + adb ya da yerinde onay |
+| TV'ler uygulamayı açılışta kendiliğinden başlatmıyor (**pilotta doğrulandı**) | Uygulamanın ana ekran olması (Device Owner) + ekran açılınca öne gelme; aşılamazsa o TV'ye çubuk |
+| Bir TV'nin otomatik kapanması menüden kapatılamıyor (**pilotta görüldü**) | Model bazında profesyonel/otel modu araştırması; son çare IR verici ya da TV değişimi (§7.3) |
+| TV'lerde onaysız uygulama güncellemesi mümkün olmayabilir | Device Owner; olmayan TV'de Tailscale + adb ya da yerinde onay |
 | Sunucunun upload hızı yetersiz | İndirme sırası, kaldığı yerden devam, makul video bit hızı |
 | Konumdaki Wi-Fi alan adı filtreliyor | Uygulamadaki bağlantı testi; gerekirse ağ yöneticisinden izin |
 | TV'de depolama az | Boş alan ölçümü ve önbellek bütçesi |

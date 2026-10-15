@@ -16,10 +16,20 @@ Kurulum adımları için: [ARCHITECTURE.md §14](ARCHITECTURE.md#14-tv-kurulum-k
 
 | TV | Marka / model | Android sürümü | Boş depolama | Wi-Fi ağı | Açılışta kendiliğinden başlıyor mu? | Otomatik kapanma kapatıldı mı? | Sesli oynatma |
 |---|---|---|---|---|---|---|---|
-| damen1 | | | | | | | |
-| damen2 | | | | | | | |
+| damen1 | | | | | Hayır (TV varsayılanı) | | ✅ |
+| damen2 | | | | | Hayır (TV varsayılanı) | | ✅ |
 | damen4 (yeni) | | | | | | | |
-| damen5 | | | | | | | |
+| damen5 | | | | | Hayır (TV varsayılanı) | | ✅ |
+
+## İlk bulgular (15 Ekim 2026)
+
+- **Ses:** Üç Android TV'de de sorunsuz.
+- **Açılışta kendiliğinden başlama:** TV'ler açılınca uygulamayı kendiliğinden açmıyor. Bu
+  beklenen bir durum; oynatıcı uygulaması bunu ana ekran (launcher) olarak ve ekranın açıldığını
+  yakalayarak çözecek ([ARCHITECTURE.md §7.2](ARCHITECTURE.md#72-kiosk-davranışı)).
+- **Otomatik kapanma:** Bir TV kendiliğinden kapanıyor ve menüde bu özelliği kapatma ayarı yok.
+  Hangi TV olduğu ve marka/modeli belirlenecek; çözüm seçenekleri
+  [ARCHITECTURE.md §7.3](ARCHITECTURE.md#73-tvnin-kendisi-uygulamanın-kontrol-edemediği-şeyler)'te.
 
 ## Notlar
 
