@@ -7,10 +7,10 @@ Kurulum adımları için: [ARCHITECTURE.md §14](ARCHITECTURE.md#14-tv-kurulum-k
 
 | TV | Konum | Yer | Durum | Oynatıcı |
 |---|---|---|---|---|
-| damen1 | Damen 1 | Yemekhane | Akıllı TV (Android olduğu doğrulanacak) | Uygulama TV'ye kurulacak |
-| damen2 | Damen 2 | Giriş | Akıllı TV (Android olduğu doğrulanacak) | Uygulama TV'ye kurulacak |
+| damen1 | Damen 1 | Yemekhane | **Android TV** (doğrulandı) | Uygulama TV'ye kurulacak |
+| damen2 | Damen 2 | Giriş | **Android TV** (doğrulandı) | Uygulama TV'ye kurulacak |
 | damen4 | Damen 4 | ? | Akıllı olmayan TV, **değiştiriliyor** | Yeni TV Google TV / Android TV olmalı ([§5.3](ARCHITECTURE.md#53-yeni-tv-alırken)) |
-| damen5 | Damen 5 | Yemekhane | Akıllı TV (Android olduğu doğrulanacak) | Uygulama TV'ye kurulacak |
+| damen5 | Damen 5 | Yemekhane | **Android TV** (doğrulandı) | Uygulama TV'ye kurulacak |
 
 ## Kurulumda toplanacak bilgiler
 
