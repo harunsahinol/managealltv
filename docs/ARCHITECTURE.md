@@ -16,8 +16,8 @@ Farklı konumlardaki televizyonları **tek bir web panelinden** yönetmek:
 
 | Konu | Karar |
 |---|---|
-| Ölçek | ~10 TV, farklı konumlarda |
-| TV'ler | Çoğu **Android TV**, birkaçı **eski (akıllı olmayan) TV**; hepsi farklı marka/model |
+| Ölçek | İlk kurulumda **4 TV** ([kurulum envanteri](kurulum-envanteri.md)), ileride ~10 |
+| TV'ler | Hepsi **Android TV** olacak (akıllı olmayan TV değiştiriliyor); hepsi farklı marka/model |
 | Ağ | Konumlarda yalnız **Wi-Fi**, Ethernet yok |
 | Sunucu | Kendi sunucumuz: **sabit IP + alan adı** var |
 | Panel kullanıcıları | **Birden fazla kişi** → kullanıcı, rol, yetki gerekli |
@@ -73,8 +73,12 @@ Farklı konumlardaki televizyonları **tek bir web panelinden** yönetmek:
 Oynatıcı uygulaması (APK) doğrudan TV'ye kurulur. **Donanım maliyeti: 0 TL.** TV'nin kendi
 donanımsal video çözücüsü kullanılır, ses TV hoparlöründen çıkar.
 
-### 5.2 Eski TV'ler: Google sertifikalı Android TV çubuğu
+### 5.2 Akıllı olmayan TV'ler: değiştirmek ya da çubuk takmak
 
+İlk kurulumdaki akıllı olmayan TV, Google TV / Android TV bir modelle **değiştiriliyor**. Bu yüzden
+şu an çubuk gerekmiyor; yeni TV alırken §5.3'teki listeye uyulmalı.
+
+Bir TV değiştirilemezse (ya da bir Android TV'de uygulama güvenilir çalışmazsa, §7.4) yedek çözüm,
 TV'nin HDMI girişine takılan bir Android TV / Google TV çubuğu ve üzerinde **aynı uygulama**.
 
 | Seçenek | Karar | Neden |
@@ -87,10 +91,20 @@ TV'nin HDMI girişine takılan bir Android TV / Google TV çubuğu ve üzerinde 
 Not: Eski TV'de **HDMI girişi** olmalı. Yalnız SCART/AV varsa HDMI→AV dönüştürücü gerekir ve
 görüntü kalitesi düşer.
 
-### 5.3 Toplam donanım maliyeti
+### 5.3 Yeni TV alırken
 
-- Android TV'ler: **0 TL**
-- Eski TV başına: **~3.600–3.800 TL** (çubuk)
+- İşletim sistemi **Google TV veya Android TV** olmalı. Tizen (Samsung), webOS (LG), VIDAA ya da
+  Vega OS gibi sistemlere uygulamamız kurulamaz.
+- Android sürümü mümkün olduğunca yeni olmalı (en az Android 7.0, §7.1).
+- En az **2 GB RAM** ve **16 GB depolama** olmalı; videolar TV'nin hafızasına inecek.
+- **Çift bant (5 GHz) Wi-Fi** olmalı.
+- Mümkünse menüde otomatik kapanma / enerji tasarrufu zamanlayıcısının kapatılabildiği
+  doğrulanmalı (§7.3).
+
+### 5.4 Toplam donanım maliyeti
+
+- Android TV'ler: **0 TL** (değiştirilen TV zaten planlanmış bir alım)
+- Çubuk: şu an **gerekmiyor**; yedek çözüm olarak TV başına ~3.600–3.800 TL
 - Sunucu, alan adı: **mevcut**
 - Aylık gider: **0 TL** (yalnız ücretsiz araçlar kullanılır)
 
@@ -429,8 +443,8 @@ Her TV için bir kez yapılır:
 **Faz 0 — Pilot (önce bu)**
 - Minimal bir test APK'sı: açılışta kendiliğinden başlar, sesli test videosu döndürür, cihaz
   bilgisini gösterir.
-- Farklı marka 2–3 TV + 1 çubukta denenir. Kendiliğinden başlama, otomatik kapanma, oynatma ve
-  güncelleme davranışı tabloya yazılır.
+- [Kurulum envanterindeki](kurulum-envanteri.md) TV'lerde denenir. Kendiliğinden başlama,
+  otomatik kapanma, oynatma ve güncelleme davranışı envanter tablosuna yazılır.
 - Sonuç: en düşük Android sürümü kararı ve hangi TV'nin çubuğa ihtiyacı olduğu.
 
 **Faz 1 — MVP**
