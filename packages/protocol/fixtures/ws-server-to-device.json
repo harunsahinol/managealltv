@@ -1,0 +1,9 @@
+[
+  { "type": "manifest_updated", "version": 8 },
+  { "type": "command", "id": "cmd_1", "command": { "type": "reload" } },
+  { "type": "command", "id": "cmd_2", "command": { "type": "restart_app" } },
+  { "type": "command", "id": "cmd_3", "command": { "type": "identify", "durationSec": 30 } },
+  { "type": "command", "id": "cmd_4", "command": { "type": "set_volume", "volume": 40 } },
+  { "type": "command", "id": "cmd_5", "command": { "type": "reboot" } },
+  { "type": "unpaired" }
+]

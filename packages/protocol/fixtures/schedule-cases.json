@@ -1,0 +1,80 @@
+{
+  "description": "Shared schedule test vectors. Both packages/protocol (TypeScript) and apps/player-android/player-core (Kotlin) must produce expectedPlaylistId for every case.",
+  "groups": [
+    {
+      "name": "typical-day",
+      "timezone": "Europe/Istanbul",
+      "defaultPlaylistId": "pl_default",
+      "rules": [
+        { "id": "r_lunch", "playlistId": "pl_lunch", "days": ["mon", "tue", "wed", "thu", "fri"], "startTime": "11:30", "endTime": "14:00", "startDate": null, "endDate": null, "priority": 10 },
+        { "id": "r_night", "playlistId": "pl_night", "days": [], "startTime": "22:00", "endTime": "06:00", "startDate": null, "endDate": null, "priority": 5 },
+        { "id": "r_holiday", "playlistId": "pl_holiday", "days": [], "startTime": "00:00", "endTime": "00:00", "startDate": "2026-10-29", "endDate": "2026-10-29", "priority": 100 },
+        { "id": "r_fri_late", "playlistId": "pl_fri", "days": ["fri"], "startTime": "23:00", "endTime": "02:00", "startDate": null, "endDate": null, "priority": 20 }
+      ],
+      "cases": [
+        { "name": "weekday lunch (Wed 12:00)", "nowUtc": "2026-10-14T09:00:00Z", "expectedPlaylistId": "pl_lunch" },
+        { "name": "start time is inclusive (Wed 11:30)", "nowUtc": "2026-10-14T08:30:00Z", "expectedPlaylistId": "pl_lunch" },
+        { "name": "end time is exclusive (Wed 14:00)", "nowUtc": "2026-10-14T11:00:00Z", "expectedPlaylistId": "pl_default" },
+        { "name": "weekday-only rule skips Saturday (Sat 12:00)", "nowUtc": "2026-10-17T09:00:00Z", "expectedPlaylistId": "pl_default" },
+        { "name": "overnight before midnight (Wed 23:00)", "nowUtc": "2026-10-14T20:00:00Z", "expectedPlaylistId": "pl_night" },
+        { "name": "overnight after midnight (Thu 01:00)", "nowUtc": "2026-10-14T22:00:00Z", "expectedPlaylistId": "pl_night" },
+        { "name": "overnight end is exclusive (Thu 06:00)", "nowUtc": "2026-10-15T03:00:00Z", "expectedPlaylistId": "pl_default" },
+        { "name": "higher priority overnight rule wins (Fri 23:30)", "nowUtc": "2026-10-16T20:30:00Z", "expectedPlaylistId": "pl_fri" },
+        { "name": "overnight rule belongs to its start day (Sat 01:30)", "nowUtc": "2026-10-16T22:30:00Z", "expectedPlaylistId": "pl_fri" },
+        { "name": "lower priority overnight rule continues (Sat 02:00)", "nowUtc": "2026-10-16T23:00:00Z", "expectedPlaylistId": "pl_night" },
+        { "name": "all-day dated rule overrides (Thu 2026-10-29 12:00)", "nowUtc": "2026-10-29T09:00:00Z", "expectedPlaylistId": "pl_holiday" },
+        { "name": "all-day rule wins over overnight rule (Thu 2026-10-29 23:30)", "nowUtc": "2026-10-29T20:30:00Z", "expectedPlaylistId": "pl_holiday" },
+        { "name": "all-day rule ends at midnight (Fri 2026-10-30 00:30)", "nowUtc": "2026-10-29T21:30:00Z", "expectedPlaylistId": "pl_night" },
+        { "name": "time zone conversion (Wed 23:59)", "nowUtc": "2026-10-14T20:59:00Z", "expectedPlaylistId": "pl_night" }
+      ]
+    },
+    {
+      "name": "ties-and-date-ranges",
+      "timezone": "Europe/Istanbul",
+      "defaultPlaylistId": null,
+      "rules": [
+        { "id": "t1", "playlistId": "pl_a", "days": [], "startTime": "09:00", "endTime": "17:00", "startDate": null, "endDate": null, "priority": 1 },
+        { "id": "t2", "playlistId": "pl_b", "days": [], "startTime": "09:00", "endTime": "17:00", "startDate": null, "endDate": null, "priority": 1 },
+        { "id": "t3", "playlistId": "pl_c", "days": [], "startTime": "10:00", "endTime": "11:00", "startDate": "2026-11-01", "endDate": null, "priority": 2 },
+        { "id": "t4", "playlistId": "pl_d", "days": [], "startTime": "22:00", "endTime": "02:00", "startDate": "2026-12-31", "endDate": "2026-12-31", "priority": 3 }
+      ],
+      "cases": [
+        { "name": "tie goes to the first rule", "nowUtc": "2026-10-14T07:00:00Z", "expectedPlaylistId": "pl_a" },
+        { "name": "nothing active and no default", "nowUtc": "2026-10-14T05:00:00Z", "expectedPlaylistId": null },
+        { "name": "before startDate", "nowUtc": "2026-10-31T07:30:00Z", "expectedPlaylistId": "pl_a" },
+        { "name": "on startDate", "nowUtc": "2026-11-01T07:30:00Z", "expectedPlaylistId": "pl_c" },
+        { "name": "dated rule end is exclusive", "nowUtc": "2026-11-01T08:00:00Z", "expectedPlaylistId": "pl_a" },
+        { "name": "overnight window on its only date", "nowUtc": "2026-12-31T19:00:00Z", "expectedPlaylistId": "pl_d" },
+        { "name": "overnight window continues into next year", "nowUtc": "2026-12-31T22:00:00Z", "expectedPlaylistId": "pl_d" },
+        { "name": "overnight window starting after endDate", "nowUtc": "2027-01-01T20:00:00Z", "expectedPlaylistId": null },
+        { "name": "overnight window starting before startDate", "nowUtc": "2026-12-29T22:00:00Z", "expectedPlaylistId": null }
+      ]
+    },
+    {
+      "name": "utc",
+      "timezone": "UTC",
+      "defaultPlaylistId": "pl_default",
+      "rules": [
+        { "id": "u1", "playlistId": "pl_morning", "days": ["mon"], "startTime": "08:00", "endTime": "12:00", "startDate": null, "endDate": null, "priority": 0 }
+      ],
+      "cases": [
+        { "name": "Monday morning", "nowUtc": "2026-10-19T09:00:00Z", "expectedPlaylistId": "pl_morning" },
+        { "name": "Tuesday morning", "nowUtc": "2026-10-20T09:00:00Z", "expectedPlaylistId": "pl_default" }
+      ]
+    },
+    {
+      "name": "daylight-saving",
+      "timezone": "Europe/Berlin",
+      "defaultPlaylistId": null,
+      "rules": [
+        { "id": "b1", "playlistId": "pl_noon", "days": [], "startTime": "12:00", "endTime": "13:00", "startDate": null, "endDate": null, "priority": 0 }
+      ],
+      "cases": [
+        { "name": "summer time noon (UTC+2)", "nowUtc": "2026-07-01T10:00:00Z", "expectedPlaylistId": "pl_noon" },
+        { "name": "summer time 13:00 is exclusive", "nowUtc": "2026-07-01T11:00:00Z", "expectedPlaylistId": null },
+        { "name": "winter time noon (UTC+1)", "nowUtc": "2026-12-01T11:00:00Z", "expectedPlaylistId": "pl_noon" },
+        { "name": "winter time 13:00 is exclusive", "nowUtc": "2026-12-01T12:00:00Z", "expectedPlaylistId": null }
+      ]
+    }
+  ]
+}

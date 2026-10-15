@@ -1,0 +1,39 @@
+{
+  "protocolVersion": 1,
+  "version": 7,
+  "generatedAt": "2026-10-15T09:00:00.000Z",
+  "deviceId": "dev_9f2c1a",
+  "deviceName": "Yemekhane 1",
+  "timezone": "Europe/Istanbul",
+  "defaultPlaylistId": "pl_default",
+  "playlists": [
+    {
+      "id": "pl_default",
+      "name": "Genel",
+      "items": [
+        { "mediaId": "med_video1", "durationSec": null },
+        { "mediaId": "med_image1", "durationSec": 15 },
+        { "mediaId": "med_image2", "durationSec": null }
+      ]
+    },
+    {
+      "id": "pl_lunch",
+      "name": "Öğle menüsü",
+      "items": [
+        { "mediaId": "med_image2", "durationSec": 20 }
+      ]
+    }
+  ],
+  "media": [
+    { "id": "med_video1", "type": "video", "sha256": "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b", "size": 48211933, "durationMs": 31500, "path": "/api/device/v1/media/med_video1" },
+    { "id": "med_image1", "type": "image", "sha256": "b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c", "size": 812044, "durationMs": null, "path": "/api/device/v1/media/med_image1" },
+    { "id": "med_image2", "type": "image", "sha256": "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730", "size": 402113, "durationMs": null, "path": "/api/device/v1/media/med_image2" }
+  ],
+  "schedule": [
+    { "id": "sch_lunch", "playlistId": "pl_lunch", "days": ["mon", "tue", "wed", "thu", "fri"], "startTime": "11:30", "endTime": "14:00", "startDate": null, "endDate": null, "priority": 10 }
+  ],
+  "settings": {
+    "volume": 60,
+    "defaultImageDurationSec": 10
+  }
+}

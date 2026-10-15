@@ -1,0 +1,16 @@
+{
+  "device": {
+    "hardwareId": "5b0e6c1e-2f43-4a5c-9a3e-0c2f8f3f2a11",
+    "manufacturer": "TCL",
+    "model": "43P635",
+    "androidVersion": "11",
+    "sdkInt": 30,
+    "appVersionName": "0.1.0",
+    "appVersionCode": 1,
+    "screenWidth": 1920,
+    "screenHeight": 1080,
+    "freeStorageBytes": 3221225472,
+    "totalStorageBytes": 8589934592,
+    "videoDecoders": ["video/avc", "video/hevc", "video/x-vnd.on2.vp9"]
+  }
+}

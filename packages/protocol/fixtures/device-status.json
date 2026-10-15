@@ -1,0 +1,18 @@
+{
+  "manifestVersion": 7,
+  "activePlaylistId": "pl_default",
+  "currentMediaId": "med_image1",
+  "syncState": "downloading",
+  "syncFilesDone": 1,
+  "syncFilesTotal": 3,
+  "syncBytesDone": 812044,
+  "syncBytesTotal": 49426090,
+  "lastError": null,
+  "freeStorageBytes": 3172000000,
+  "uptimeSec": 5400,
+  "appVersionName": "0.1.0",
+  "appVersionCode": 1,
+  "volume": 60,
+  "overlayPermission": true,
+  "deviceOwner": false
+}
