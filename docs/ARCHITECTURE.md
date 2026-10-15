@@ -1,167 +1,317 @@
-# ManageAllTV — Sistem Mimarisi (Taslak v0.1)
+# ManageAllTV — Sistem Mimarisi (Taslak v0.2)
 
-> **Durum:** Tartışma taslağı. Mimari ilkeler öneridir; tech stack henüz kesinleşmedi (bkz. §12 ve §13).
+> **Durum:** Gereksinimler netleşti, mimari ve tech stack önerildi. Uygulamaya geçmeden önce
+> küçük bir pilot (Faz 0, §17) ile TV'ler üzerinde doğrulama yapılacak.
 
 ## 1. Amaç
 
-Farklı konumlardaki televizyonlara bağlı küçük oynatıcı cihazları (ör. Raspberry Pi) **tek bir merkezden** yönetmek:
+Farklı konumlardaki televizyonları **tek bir web panelinden** yönetmek:
 
 - Bilgisayardan (veya telefondan) resim ve video yüklemek,
-- Bu içerikleri oynatma listelerine koyup istenen TV'lere / TV gruplarına atamak,
-- TV'lerin durumunu (çevrimiçi mi, şu an ne oynatıyor) görmek ve uzaktan komut göndermek,
-- Cihazlar ve yönetici **aynı ağda ya da tamamen farklı ağlarda** olsa da sistemin çalışması (ör. evden yönetim).
+- Bu içerikleri oynatma listelerine koyup istenen TV'lere / gruplara / konumlara atamak,
+- TV'lerin durumunu görmek ve uzaktan komut göndermek,
+- TV'ler ve yöneticiler aynı ağda da olsa tamamen farklı ağlarda da olsa çalışmak (ör. evden yönetim).
 
-Benzer hazır çözümler mevcut (Xibo, piSignage, Anthias; ücretli olarak Yodeck, Screenly). Bunları ilham kaynağı olarak inceleyebiliriz. Kendi sistemimizi yazmanın kazancı: tam kontrol, sade ve ihtiyaca özel bir arayüz, ekran başına lisans ücreti olmaması.
+## 2. Gereksinimler
 
-## 2. Temel tasarım ilkeleri
+| Konu | Karar |
+|---|---|
+| Ölçek | ~10 TV, farklı konumlarda |
+| TV'ler | Çoğu **Android TV**, birkaçı **eski (akıllı olmayan) TV**; hepsi farklı marka/model |
+| Ağ | Konumlarda yalnız **Wi-Fi**, Ethernet yok |
+| Sunucu | Kendi sunucumuz: **sabit IP + alan adı** var |
+| Panel kullanıcıları | **Birden fazla kişi** → kullanıcı, rol, yetki gerekli |
+| İçerik | Yalnız **resim + video**, **ses var** |
+| Çözünürlük | **1080p yeterli** (4K zorunlu değil) |
+| Öncelik | **Maliyeti asgari tutmak** (donanım + aylık gider) |
 
-### 2.1 Merkezi sunucu, sunucuya kendisi bağlanan cihazlar
+## 3. Temel tasarım ilkeleri
 
-En kritik karar: **Bilgisayar TV'lere doğrudan bağlanmaz.** Bunun yerine:
+1. **Bağlantıyı TV'ler başlatır.** Sunucuya bağlanan taraf her zaman TV'dir. TV'nin olduğu ağda
+   port açma, modem ayarı vb. hiçbir şey gerekmez; internete çıkabilen her Wi-Fi'da çalışır.
+   Dışarıya açık tek nokta bizim sunucumuzdur (yalnız HTTPS).
+2. **Çevrimdışı öncelikli oynatma.** TV içerikleri kendi hafızasına indirir ve her zaman oradan
+   oynatır. İnternet ya da sunucu giderse son listeyi oynamaya devam eder. Video asla internetten
+   anlık oynatılmaz; bu, Wi-Fi'ın zayıf olduğu yerlerde de kesintisiz yayın demektir.
+3. **İstenen durum (manifest) senkronizasyonu.** Sunucu her TV için "hangi dosyalar, hangi sırayla,
+   hangi saatlerde" bilgisini üretir. TV eksikleri indirir, SHA-256 ile doğrular, **hepsi hazır
+   olunca** yeni listeye geçer.
+4. **Tek oynatıcı yazılımı.** Oynatıcı bir **Android uygulamasıdır**. Android TV'lere doğrudan
+   kurulur; eski TV'lere takılan Android TV çubuğuna da **aynı uygulama** kurulur. Bakımı
+   yapılacak tek bir oynatıcı vardır.
+5. **Kolay kurulum.** Uygulama açılınca ekranda bir eşleştirme kodu gösterir; kod panele girilince
+   TV sisteme eklenir.
 
-- İnternetten erişilebilen tek bir **merkezi sunucu** vardır.
-- Her oynatıcı cihaz açıldığında bu sunucuya **kendisi dışarıya doğru** bağlanır (HTTPS/WSS, port 443).
-- Yönetici de aynı sunucudaki web paneline girer.
-
-Sonuç: Cihazların bulunduğu ağlarda modem ayarı, port yönlendirme, sabit IP, DDNS vb. **hiçbir şey gerekmez.** CGNAT arkasındaki ev interneti, kurumsal ağ, mobil hotspot, 4G modem: internete çıkabilen her ağda çalışır. "Aynı ağ / farklı ağ" ayrımı ortadan kalkar.
-
-### 2.2 Çevrimdışı öncelikli oynatma (offline-first)
-
-Cihaz içerikleri **yerel diske indirir ve her zaman yerelden oynatır.** İnternet kesilirse son bilinen oynatma listesini oynamaya devam eder; bağlantı geri gelince kendini senkronize eder. Video hiçbir zaman internetten anlık (stream) oynatılmaz.
-
-### 2.3 "İstenen durum" senkronizasyonu
-
-Sunucu her cihaz için bir **manifest** (istenen durum) üretir: hangi dosyalar, hangi sırayla, hangi saatlerde oynatılacak. Cihaz kendi yerel durumunu bu manifestle karşılaştırır, eksikleri indirir, doğrular, sonra yeni listeye **tek seferde (atomik olarak)** geçer. Kaçırılan bildirim, yarım kalan indirme gibi sorunlar bu sayede kendiliğinden düzelir.
-
-### 2.4 Sıfır dokunuşla kurulum
-
-Yeni cihaz: SD kartı yaz → TV'ye tak → ekranda çıkan **eşleştirme kodunu** panele gir. Cihaz başına SSH ile tek tek ayar yapmak gerekmez.
-
-### 2.5 Ayrı bir bakım kanalı
-
-İçerik yönetimi merkezi sunucu üzerinden yürür. Sorun gidermek için cihazlara SSH ile erişebilmek adına cihazlar ayrıca **Tailscale** (WireGuard tabanlı özel ağ) ile bağlanır. Bu da port açmadan çalışır.
-
-## 3. Genel bakış
+## 4. Genel bakış
 
 ```
-   ┌────────────────────┐
-   │ Sen: tarayıcı      │  (evden, ofisten, telefondan)
-   └─────────┬──────────┘
-             │ HTTPS
-             ▼
+   ┌──────────────────────────────┐
+   │ Panel kullanıcıları          │  (tarayıcı: evden, ofisten, telefondan)
+   └──────────────┬───────────────┘
+                  │ HTTPS
+                  ▼
    ┌───────────────────────────────────────────────┐
-   │          MERKEZİ SUNUCU (bulut VPS)           │
-   │ Yönetim paneli · API · WebSocket              │
-   │ Medya işleme (ffmpeg) · Depolama · PostgreSQL │
+   │   KENDİ SUNUCUNUZ (sabit IP + alan adı)       │
+   │ Caddy (HTTPS) · API + WebSocket · Panel       │
+   │ PostgreSQL · ffmpeg işleri · Medya diski      │
    └───────────────────────────────────────────────┘
              ▲                ▲                ▲
-             │ WSS + HTTPS    │                │   ← bağlantıyı cihazlar
-             │ (dışa doğru)   │                │     başlatır; port açma yok
+             │ HTTPS + WSS    │                │   ← bağlantıyı TV'ler
+             │ (Wi-Fi, dışa)  │                │     başlatır
    ┌─────────┴─────┐  ┌───────┴───────┐  ┌─────┴─────────┐
    │ Konum A       │  │ Konum B       │  │ Konum C       │
-   │ (ev Wi-Fi)    │  │ (4G modem)    │  │ (kurum ağı)   │
-   │ Pi + ajan+mpv │  │ Pi + ajan+mpv │  │ Pi + ajan+mpv │
-   │     │ HDMI    │  │     │ HDMI    │  │     │ HDMI    │
-   │   [ TV ]      │  │   [ TV ]      │  │   [ TV ]      │
+   │ Android TV    │  │ Android TV    │  │ Eski TV       │
+   │ + oynatıcı    │  │ + oynatıcı    │  │ + Android     │
+   │   uygulaması  │  │   uygulaması  │  │   TV çubuğu   │
    └───────────────┘  └───────────────┘  └───────────────┘
 ```
 
-## 4. Bileşenler
+## 5. Oynatıcı stratejisi ve donanım
 
-### 4.1 Merkezi sunucu
+### 5.1 Android TV'ler: ek donanım yok
 
-- **API:** cihazlar, konumlar, gruplar, medya, oynatma listeleri, zamanlamalar.
-- **WebSocket geçidi:** cihazlarla kalıcı bağlantı; anlık bildirim ve komut iletimi.
-- **Medya işleme:** yüklenen videoyu cihazlarda sorunsuz oynayacak standart formata dönüştürme (ffmpeg), küçük resim (thumbnail) üretme, süre/çözünürlük/SHA-256 sağlama toplamı çıkarma.
-- **Medya depolama:** orijinal ve dönüştürülmüş dosyalar.
-- **Manifest üretimi:** her cihaz için atamalar ve zamanlamalardan istenen durumu hesaplama.
-- **İzleme:** son görülme zamanı, oynatılan içerik, disk doluluğu, sıcaklık, ekran görüntüsü.
+Oynatıcı uygulaması (APK) doğrudan TV'ye kurulur. **Donanım maliyeti: 0 TL.** TV'nin kendi
+donanımsal video çözücüsü kullanılır, ses TV hoparlöründen çıkar.
 
-### 4.2 Yönetim paneli (web)
+### 5.2 Eski TV'ler: Google sertifikalı Android TV çubuğu
 
-Tarayıcıdan çalışır; ayrı uygulama kurmaya gerek yok, telefondan da kullanılabilir.
+TV'nin HDMI girişine takılan bir Android TV / Google TV çubuğu ve üzerinde **aynı uygulama**.
 
-- Medya kütüphanesi: sürükle-bırak yükleme, büyük dosyalarda kaldığı yerden devam
-- Oynatma listesi düzenleyici: sıralama, resimlerin ekranda kalma süresi
-- Cihaz listesi: çevrimiçi durumu, şu an ne oynuyor, son ekran görüntüsü
-- Atama: liste → cihaz / grup / konum
-- Zamanlama: gün ve saat aralıkları, öncelik
-- Komutlar: yeniden başlat, içeriği yenile, ekran görüntüsü al, TV'yi aç/kapat, ses
+| Seçenek | Karar | Neden |
+|---|---|---|
+| **Google sertifikalı çubuk** (ör. Xiaomi TV Stick 4K 2. nesil) | ✅ **Önerilen** | Türkiye'de yaklaşık **3.600–3.800 TL** (tarihi belirsiz fiyat kayıtları, satın alırken kontrol edilmeli). Adaptör, kumanda ve HDMI uzatma kutudan çıkar; 5 GHz Wi-Fi; aynı APK çalışır |
+| Markasız / sertifikasız ucuz Android kutular | ❌ Kaçınılmalı | Bu sınıf cihazlarda fabrikadan gelen zararlı yazılım vakaları var (BadBox 2.0, FBI uyarısı, Haziran 2025). Cihaz kurum ağında 7/24 açık kalacak |
+| Yeni Amazon Fire TV çubukları | ❌ Kaçınılmalı | Fire TV Stick 4K Select ve sonrası Android değil **Vega OS** çalıştırıyor; dışarıdan APK kurulamıyor |
+| Raspberry Pi Zero 2 W | ❌ Önerilmez | Kart tek başına yaklaşık 700–1.100 TL (KDV dahil), ama adaptör, SD kart, kasa ve adaptör kablosu ayrıca alınır. Asıl maliyet **ikinci bir oynatıcı yazılımı** (Linux) yazıp bakımını yapmak; birkaç TV için sağlanan tasarrufu karşılamaz. Ayrıca 512 MB RAM ve yalnız 2,4 GHz Wi-Fi |
 
-### 4.3 Oynatıcı cihaz
+Not: Eski TV'de **HDMI girişi** olmalı. Yalnız SCART/AV varsa HDMI→AV dönüştürücü gerekir ve
+görüntü kalitesi düşer.
 
-Her TV'nin arkasında bir cihaz, üzerinde iki yazılım parçası:
+### 5.3 Toplam donanım maliyeti
 
-1. **Ajan (agent):** arka planda çalışan servis.
-   - Sunucuya bağlanır, kimliğini doğrular, düzenli "hayattayım" (heartbeat) mesajı gönderir.
-   - Manifesti alır, dosyaları indirir, SHA-256 ile doğrular, artık kullanılmayanları siler.
-   - Zamanlamayı **cihazın kendisinde** değerlendirir; internet yokken de doğru saatte doğru liste oynar.
-   - Oynatıcıyı kontrol eder, komutları uygular, ekran görüntüsü gönderir.
-2. **Oynatıcı (renderer): mpv.**
-   - Masaüstü ortamı olmadan doğrudan ekrana (DRM/KMS) çizer; hafif ve kararlıdır.
-   - Hem video hem resim oynatır, donanımsal video çözme kullanır.
-   - JSON IPC soketi üzerinden ajan tarafından yönetilir.
+- Android TV'ler: **0 TL**
+- Eski TV başına: **~3.600–3.800 TL** (çubuk)
+- Sunucu, alan adı: **mevcut**
+- Aylık gider: **0 TL** (yalnız ücretsiz araçlar kullanılır)
 
-İleride web sayfası, hava durumu, çoklu bölgeli ekran düzeni (ör. solda video, sağda duyuru) istenirse ikinci bir oynatıcı modu olarak Chromium kiosk eklenebilir. MVP için mpv yeterli ve çok daha kararlı.
+## 6. Ağ ve bağlantı
 
-Ajan ve oynatıcı systemd servisi olarak açılışta otomatik başlar, çökerse yeniden başlatılır. Donanım watchdog'u cihaz tamamen kilitlenirse cihazı yeniden başlatır.
+### 6.1 Sunucuya erişim
 
-## 5. Ağ ve bağlantı
+- DNS'te `tv.alanadiniz.com` → sunucunun sabit IP'si (A kaydı).
+- Sunucuda dışarıya **yalnız 443** (HTTPS) ve sertifika yenileme için **80** açık. Caddy,
+  Let's Encrypt sertifikasını otomatik alır ve yeniler.
+- Sunucu bir modemin arkasındaysa yalnız **sunucunun bulunduğu yerde** 80/443 yönlendirilir.
+  TV'lerin bulunduğu ağlarda hiçbir ayar yapılmaz.
+- Port açmak istenmezse alternatif: Cloudflare Tunnel (ücretsiz). Bu durumda tek istek boyutu
+  ~100 MB ile sınırlıdır. Yükleme zaten 50 MB'lık parçalarla yapıldığı için (§8.2) iki yol da
+  çalışır.
 
-| Trafik | Yön | Protokol | Not |
-|---|---|---|---|
-| Yönetici → Panel | dışa | HTTPS | Her yerden erişim |
-| Cihaz → Sunucu (kontrol) | dışa | WSS (443) | Kalıcı bağlantı, otomatik yeniden bağlanma |
-| Cihaz → Depolama (indirme) | dışa | HTTPS (443) | Kaldığı yerden devam (HTTP Range) |
-| Bakım (SSH) | Tailscale | WireGuard | Port açmadan |
+| Trafik | Yön | Protokol |
+|---|---|---|
+| Panel kullanıcısı → sunucu | dışa | HTTPS |
+| TV → sunucu (komut, durum) | dışa | WSS (443), kalıcı bağlantı |
+| TV → sunucu (dosya indirme) | dışa | HTTPS (443), kaldığı yerden devam (HTTP Range) |
+| Bakım (opsiyonel) | Tailscale | Sunucuya SSH, TV/çubuklara adb |
 
-- WebSocket kopsa bile cihaz periyodik olarak (ör. 5 dakikada bir) manifest sürümünü HTTP ile de sorar; yedek mekanizma.
-- Her şey 443 portundan geçtiği için kurumsal güvenlik duvarlarından da genellikle sorunsuz geçer.
-- İnternet olmayan konumlar için USB 4G modem veya mobil hotspot yeterlidir.
-- Konumun Wi-Fi bilgisi önceden bilinmiyorsa: ağ bulamayan cihaz kendi Wi-Fi erişim noktasını açar ("ManageAllTV-Kurulum"), telefondan bağlanıp yerel Wi-Fi şifresi girilir. Mümkün olan yerde kablolu Ethernet tercih edilmeli.
+### 6.2 Wi-Fi'a özgü notlar
 
-**Sunucu nerede olmalı?** Önerimiz küçük bir bulut VPS. Sunucu evde de barındırılabilir (ev bilgisayarı veya bir Pi + Cloudflare Tunnel / Tailscale), ancak ev interneti veya elektrik kesildiğinde hiçbir TV güncellenemez ve panele erişilemez. Cihazlar önbellekten oynamaya devam ettiği için bu ölümcül değil, ama VPS daha güvenilir.
+- WebSocket kopabilir. Uygulama otomatik yeniden bağlanır ve ayrıca 5 dakikada bir manifest
+  sürümünü HTTP ile kontrol eder.
+- Bazı kurum/misafir Wi-Fi ağları belirli alan adlarını filtreliyor. Tarayıcı bazen bu
+  filtreyi atlattığı için "tarayıcıda açılıyor" doğru bir test **değildir**. Uygulamada bir
+  **bağlantı testi ekranı** olacak (DNS → TLS → sunucu); kurulumda bununla doğrulanır.
+- 5 GHz Wi-Fi tercih edilir.
+- **Sunucunun upload hızı** önemli. Her yeni video her TV'ye bir kez iner (ör. 200 MB × 10 TV =
+  2 GB). Sunucu indirmeleri sıraya koyar; aynı anda en fazla N TV indirir, kalanlar bekler.
 
-## 6. Ana akışlar
+### 6.3 Eski Android'de HTTPS
 
-### 6.1 Yeni cihaz ekleme (eşleştirme)
+Android 7.1.1'den eski sürümler Let's Encrypt'in kök sertifikasını (ISRG Root X1) tanımıyor.
+Uygulama bu kök sertifikayı kendi içinde taşır (`network_security_config`). Hedef taban
+Android 7.0 olduğu için (§7.1) bu yöntem tüm desteklenen cihazlarda çalışır.
+
+## 7. Oynatıcı uygulaması (Android)
+
+### 7.1 Teknoloji
+
+- **Kotlin**, en düşük sürüm **Android 7.0 (API 24)**. Daha eski bir TV çıkarsa önce pilotta
+  test edilir, olmazsa o TV'ye çubuk takılır.
+- Video: **Media3 / ExoPlayer** (Google'ın resmi oynatıcısı, donanımsal çözme).
+- Resim: video katmanının üstünde basit bir görüntü katmanı; süre dolunca geçiş efektiyle sıradakine.
+- Ağ: OkHttp (HTTP + WebSocket), kotlinx.serialization.
+
+**Neden native Kotlin** (React Native / Flutter yerine): TV'lerin çoğunda 1–2 GB RAM var ve
+native uygulama en hafif seçenek. Açılışta başlama, ekranı açık tutma, cihaz yönetimi gibi kiosk
+özellikleri zaten native kod gerektiriyor. Ayrıca Android TV dışındaki ortamlara (iOS, web)
+ihtiyacımız yok.
+
+### 7.2 Kiosk davranışı
+
+| İhtiyaç | Çözüm |
+|---|---|
+| TV açılınca uygulamanın kendiliğinden başlaması | Açılış sinyalini dinleme (`BOOT_COMPLETED`). Android 10+ için "Diğer uygulamaların üzerinde göster" izni gerekir; TV ayarlarında yoksa kurulumda adb ile verilir. Android TV'de mümkünse uygulama ana ekran (launcher) olarak da seçilebilir |
+| Ekranın kararmaması | Uygulama ekranı açık tutar; TV'nin ekran koruyucusu kapatılır |
+| Çökme sonrası yeniden başlama | Ön plan servisi + zamanlayıcı ile kontrol |
+| Uzaktan güncelleme | Uygulama yeni APK'yı sunucudan indirir. **Cihaz sahibi (Device Owner) modunda** onaysız kurulur; bu mod hesapsız (sıfırlanmış) cihaz ister, bu yüzden en uygun olduğu yer **çubuklardır**. TV'lerde kurulum için bir onay gerekebilir; pilotta test edilecek, olmazsa Tailscale üzerinden adb ile güncellenir |
+| Ekran görüntüsü | Uygulama kendi ekranının görüntüsünü alır (izin istemez); pilotta doğrulanacak |
+| Depolama | TV'lerde boş alan az olabilir. Uygulama boş alanı ölçer, bütçe dahilinde indirir, kullanılmayanı siler |
+
+### 7.3 TV'nin kendisi (uygulamanın kontrol edemediği şeyler)
+
+- **Otomatik kapanma:** Birçok TV, kumandaya dokunulmazsa birkaç saat sonra (AB enerji
+  düzenlemesi gereği) kendini kapatır. Kurulumda TV menüsünden **kapatılmalı**.
+- **TV'yi açıp kapatmak:** Normal bir uygulama TV'yi bekleme modundan açamaz. Açılış ve kapanış
+  için TV'nin **kendi zamanlayıcısı** kullanılır, ya da TV sürekli açık bırakılır.
+- **Açılış kaynağı:** Eski TV'lerde açılışta çubuğun takılı olduğu HDMI girişi seçili olmalı.
+
+### 7.4 Farklı marka/model TV'ler
+
+Hepsi farklı olduğu için:
+- Uygulama eşleştirmede TV'nin **modelini, Android sürümünü, boş alanını ve oynatabildiği video
+  formatlarını** panele bildirir.
+- Her TV için bir **kurulum kontrol listesi** uygulanır (§14).
+- Uygulama kendiliğinden başlamıyor ya da TV tarafından kapatılıyor gibi bir sorun aşılamazsa,
+  **o TV'ye de çubuk takılır**. Yedek plan budur.
+
+## 8. Sunucu
+
+### 8.1 Bileşenler
+
+- **API + WebSocket:** cihazlar, konumlar, gruplar, medya, listeler, zamanlamalar, komutlar.
+- **Medya işleme (iş kuyruğu):** dönüştürme, küçük resim üretme, SHA-256 hesaplama.
+- **Manifest üretimi:** atamalar ve zamanlamalardan her TV'nin istenen durumunu hesaplama.
+- **Dosya servisi:** kaldığı yerden devam eden indirme; her istekte cihaz yetkisi kontrol edilir.
+- **İzleme:** son görülme, oynatılan içerik, senkron durumu, ekran görüntüsü. TV 10 dakikadan
+  uzun süre çevrimdışı kalırsa panelde uyarı gösterilir.
+
+### 8.2 Tech stack
+
+| Katman | Seçim | Gerekçe |
+|---|---|---|
+| Dil | **TypeScript** (Node.js LTS) | Panel de TypeScript; tek dil, hızlı geliştirme |
+| API | **Hono** + `@hono/zod-openapi` | Hafif; Zod şemalarından otomatik OpenAPI belgesi |
+| WebSocket | `@hono/node-ws` | TV'lere anlık bildirim ve komut |
+| Veritabanı | **PostgreSQL** + Prisma | İlişkisel modelimize uygun, güvenilir |
+| İş kuyruğu | **pg-boss** | Kuyruk PostgreSQL üzerinde; ayrı Redis gerekmez |
+| Kimlik doğrulama | **Better Auth** | E-posta + parola, iki adımlı doğrulama (TOTP), oturum yönetimi hazır |
+| Medya işleme | **ffmpeg / ffprobe** (video), **sharp** (resim) | Dönüştürme, ses normalizasyonu, thumbnail |
+| Dosya yükleme | **tus** (`@tus/server` + panelde Uppy) | Büyük videolarda kaldığı yerden devam; 50 MB parçalar |
+| Medya depolama | **Sunucu diski** (`/srv/managealltv/media`) | En basit ve ücretsiz. MinIO'nun ücretsiz sürümü 2025'te geliştirmeyi bıraktı; ek depolama sunucusuna gerek yok |
+| Panel | **React + Vite**, TanStack Query/Router, Tailwind, shadcn/ui | Hızlı geliştirme, modern arayüz |
+| Ters vekil + HTTPS | **Caddy** | Otomatik Let's Encrypt; dosyaları Range desteğiyle sunar, yetki kontrolünü backend'e sorar (`forward_auth`) |
+| Dağıtım | **Docker Compose** | Tek komutla kurulum ve güncelleme |
+| Yedekleme | Gece `pg_dump` + medya klasörünün başka bir diske/makineye kopyası | Ücretsiz |
+| İzleme (opsiyonel) | Uptime Kuma | Sunucu erişilemezse bildirim |
+| Bakım erişimi (opsiyonel) | **Tailscale** (ücretsiz plan) | Sunucuya SSH ve çubuklara adb, port açmadan |
+| Oynatıcı | **Kotlin** + Media3 + OkHttp | §7.1 |
+
+### 8.3 Protokolün paylaşılması
+
+Cihaz ile sunucu arasındaki mesajlar **tek yerde**, `packages/protocol` içinde Zod şemaları
+olarak tanımlanır:
+
+- Sunucu ve panel bu şemaları doğrudan kullanır (TypeScript).
+- Şemalardan OpenAPI / JSON Schema üretilir, bundan da Android uygulamasının **Kotlin veri
+  sınıfları otomatik üretilir**.
+- Bir sözleşme testi, Kotlin tarafının üretilen şemayla uyumlu olduğunu doğrular.
+
+### 8.4 Repo yapısı
 
 ```
-1. Cihaz ilk kez açılır; kayıtlı kimlik (token) yok
-2. Cihaz → Sunucu : eşleştirme isteği (donanım bilgisi)
-3. Sunucu → Cihaz : { pairingCode: "482-913" }
-4. Cihaz kodu TV ekranında büyük harflerle gösterir
-5. Yönetici panelde "Cihaz ekle" → kodu, cihaz adını ve konumu girer
-6. Sunucu cihazı kaydeder, uzun ömürlü bir cihaz token'ı üretir
-7. Cihaz token'ı alır, diske kaydeder ve normal çalışmaya geçer
+managealltv/
+├── apps/
+│   ├── server/           # Hono API + WebSocket + medya işleri (TypeScript)
+│   ├── web/              # Yönetim paneli (React + Vite)
+│   └── player-android/   # Oynatıcı uygulaması (Kotlin, Gradle)
+├── packages/
+│   └── protocol/         # Zod şemaları → OpenAPI → TS + Kotlin tipleri
+├── deploy/               # docker-compose.yml, Caddyfile, yedekleme script'leri
+└── docs/
 ```
 
-Token panelden iptal edilebilir (cihaz çalınırsa, el değiştirirse vb.).
+TypeScript tarafı pnpm workspaces ile yönetilir. Android projesi kendi Gradle yapısıyla
+`apps/player-android` altında durur.
 
-### 6.2 İçerik yükleme ve yayınlama
+## 9. Rust sorusu: Rust ile daha az kaynak harcar mıyız?
 
-1. Yönetici dosyayı panele sürükler; yükleme kesilirse kaldığı yerden devam eder.
-2. Sunucu ffmpeg ile dosyayı analiz eder, dönüştürür, thumbnail üretir → medya "hazır".
-3. Yönetici medyayı bir listeye ekler, listeyi cihaza/gruba atar, "Yayınla" der.
-4. Sunucu etkilenen cihazların manifestini yeniden hesaplar ve sürüm numarasını artırır.
-5. Çevrimiçi cihazlara WebSocket üzerinden `manifest_updated` bildirimi gider. Çevrimdışı olanlar bağlandıklarında güncellemeyi alır.
+**Bu sistemde Rust'ın pratik bir kazancı yok.**
 
-### 6.3 Senkronizasyon (cihaz tarafı)
+- **Oynatıcı tarafı:** Oynatıcı artık Android uygulaması. Asıl iş olan video çözmeyi TV'nin
+  donanımsal çözücüsü yapıyor. Uygulamanın kendi kodu, Android'in ve oynatıcının yanında çok
+  küçük kalıyor. Rust'ı Android'e taşımak (JNI/NDK) karmaşıklık ekler, kaynak tasarrufu sağlamaz.
+- **Sunucu tarafı:** 10 TV için sunucu yükü ihmal edilebilir düzeyde. Burada önemli olan
+  geliştirme hızı ve hazır bileşenler (kimlik doğrulama, 2FA, kuyruk, yükleme). Bunlar
+  TypeScript ekosisteminde daha olgun.
+- **Rust nerede anlamlı olurdu:** Pi Zero 2 W gibi 512 MB RAM'li bir Linux cihaza kendi ajanımızı
+  yazsaydık. Orada bellek kullanımı Rust'ta birkaç MB, Node.js'te onlarca MB olurdu ve bu fark
+  hissedilirdi. Pi yerine Android çubuk seçtiğimiz için bu senaryo ortadan kalktı.
+
+## 10. Medya işleme
+
+### 10.1 Video
+
+Hedef format, her Android TV ve çubuğun donanımla rahat oynatabildiği ortak profil:
+
+| Ayar | Değer |
+|---|---|
+| Codec | H.264 High profile, level 4.1, 8-bit `yuv420p` |
+| Çözünürlük | En fazla 1920×1080 (büyük olan küçültülür, küçük olan büyütülmez) |
+| Kare hızı | En fazla 30 fps |
+| Bit hızı | CRF ~22, üst sınır ~8 Mbit/s |
+| Anahtar kare | 2 saniyede bir |
+| Ses | AAC-LC, 48 kHz, stereo, **ses yüksekliği normalizasyonu** (EBU R128 `loudnorm`). Böylece tüm videolar aynı ses seviyesinde çalar |
+| Kapsayıcı | MP4 + `faststart` |
+
+- Video zaten uyumluysa **yeniden kodlanmaz**. Görüntü olduğu gibi kopyalanır, yalnız ses
+  normalize edilir. Bu hızlıdır ve kalite kaybı olmaz.
+- Uyumsuzsa tam dönüştürme yapılır (`libx264 -preset faster`). GPU gerekmez.
+
+### 10.2 Resim
+
+EXIF'e göre döndürme, 1920×1080'e sığdırma (büyütmeden), JPEG kalite ~85, meta veriler (GPS vb.)
+silinir. Panel için küçük resimler üretilir.
+
+## 11. Ana akışlar
+
+### 11.1 Yeni TV ekleme (eşleştirme)
+
+```
+1. Uygulama ilk açılış: kayıtlı kimlik yok
+2. Uygulama → Sunucu : eşleştirme isteği + cihaz bilgisi (model, Android sürümü, boş alan, codec'ler)
+3. Sunucu → Uygulama : { pairingCode: "482-913" }
+4. Kod TV ekranında büyük harflerle gösterilir
+5. Yetkili kullanıcı panelde "TV ekle" → kod + TV adı + konum
+6. Sunucu cihazı kaydeder, uzun ömürlü cihaz anahtarı (token) üretir
+7. Uygulama anahtarı alır, saklar, normal çalışmaya geçer
+```
+
+Anahtar panelden iptal edilebilir. Sunucuda yalnız anahtarın hash'i saklanır.
+
+### 11.2 İçerik yükleme ve yayınlama
+
+1. Kullanıcı dosyayı panele sürükler. Parçalı yükleme kesilirse kaldığı yerden devam eder.
+2. Sunucu ffmpeg/sharp ile işler, SHA-256 hesaplar → medya "hazır".
+3. Kullanıcı medyayı listeye ekler, listeyi TV'ye / gruba / konuma atar ve **Yayınla** der.
+4. Sunucu etkilenen TV'lerin manifestini günceller, çevrimiçi olanlara WebSocket ile bildirir.
+   Çevrimdışı olanlar bağlandıklarında alır.
+
+### 11.3 Senkronizasyon (TV tarafı)
 
 1. Yeni manifesti al.
-2. Yerel önbellekte olmayan dosyaları geçici klasöre indir, SHA-256 ile doğrula.
-3. **Bütün dosyalar hazır olunca** oynatma listesini değiştir; yarım liste asla oynatılmaz.
-4. Hiçbir geçerli manifestte yer almayan dosyaları sil (disk dolmasın).
-5. Senkron durumunu sunucuya bildir → panelde "güncel / indiriliyor %63 / hata".
+2. Eksik dosyaları geçici klasöre indir (kaldığı yerden devam), SHA-256 ile doğrula.
+3. **Bütün dosyalar hazır olunca** listeyi değiştir.
+4. Kullanılmayan dosyaları sil.
+5. Durumu bildir → panelde "güncel / indiriliyor %63 / hata".
 
 Örnek manifest:
 
 ```json
 {
   "version": 42,
-  "defaultPlaylist": "pl_lobby",
+  "defaultPlaylist": "pl_lobi",
   "playlists": {
-    "pl_lobby": [
+    "pl_lobi": [
       { "media": "m_1", "type": "video", "sha256": "…", "size": 48211933 },
       { "media": "m_2", "type": "image", "sha256": "…", "size": 812044, "durationSec": 10 }
     ],
@@ -170,126 +320,151 @@ Token panelden iptal edilebilir (cihaz çalınırsa, el değiştirirse vb.).
   "schedule": [
     { "playlist": "pl_aksam", "days": ["mon","tue","wed","thu","fri"], "from": "18:00", "to": "23:00", "priority": 10 }
   ],
-  "tvPower": { "on": "08:30", "off": "23:30" }
+  "volume": 70
 }
 ```
 
-### 6.4 Uzaktan komutlar
+Zamanlama TV'nin kendisinde değerlendirilir. Bu sayede internet yokken de doğru saatte doğru
+liste oynar.
 
-Sunucu → cihaz: `{ id, type, params }` · Cihaz → sunucu: `{ id, ok, result }`
+### 11.4 Uzaktan komutlar
 
-Örnek komut tipleri: `reboot`, `restart_player`, `screenshot`, `tv_power` (HDMI-CEC ile TV aç/kapat), `set_volume`, `identify` (ekranda cihazın adını göster).
+Sunucu → TV: `{ id, type, params }`, TV → sunucu: `{ id, ok, result }`.
 
-## 7. Veri modeli (taslak)
+Komutlar: `reload` (manifesti yeniden çek), `restart_app`, `screenshot`, `set_volume`,
+`identify` (ekranda TV adını göster), `reboot` (yalnız Device Owner modunda), `update_app`.
+
+## 12. Kullanıcılar ve yetkiler
+
+### 12.1 Roller
+
+| İşlem | Yönetici | Editör | İzleyici |
+|---|:---:|:---:|:---:|
+| Kullanıcı ekleme / rol verme | ✅ | – | – |
+| TV eşleştirme, silme, konum/grup düzenleme | ✅ | – | – |
+| Medya yükleme | ✅ | ✅ | – |
+| Medya silme | ✅ | kendi yüklediği | – |
+| Liste oluşturma / düzenleme | ✅ | ✅ | – |
+| Yayınlama, atama, zamanlama | ✅ | ✅ (yetkili konumlarında) | – |
+| Komutlar (yeniden başlat, ses, ekran görüntüsü) | ✅ | ✅ (yetkili konumlarında) | – |
+| Durum ve ekran görüntülerini görme | ✅ | ✅ | ✅ |
+| İşlem kaydını (audit log) görme | ✅ | – | – |
+
+- **Konum kısıtı:** Editör ve İzleyici belirli konumlarla sınırlanabilir; Yönetici her şeyi görür.
+- **İleride (opsiyonel):** Editörün yayını Yönetici onayıyla canlıya çıkar.
+
+### 12.2 Kimlik doğrulama
+
+- E-posta + parola (argon2id ile hash), oturum HttpOnly + Secure çerezde.
+- **İki adımlı doğrulama (TOTP)**, Yönetici için zorunlu.
+- **E-posta sunucusu gerekmez:** Yönetici kullanıcıyı ekler, sistem tek kullanımlık bir **davet
+  bağlantısı** üretir, Yönetici bunu iletir. Parola sıfırlama da aynı yöntemle yapılır.
+- Giriş denemelerinde hız sınırı; durum değiştiren isteklerde CSRF koruması.
+- **Cihaz anahtarları kullanıcı oturumlarından tamamen ayrıdır.** Bir cihaz anahtarı yalnız o
+  cihazın manifestine ve dosyalarına erişebilir.
+
+### 12.3 İşlem kaydı
+
+Her değişiklik kaydedilir: kim, ne zaman, hangi işlem, hangi kayıt, önceki/sonraki değer, IP.
+
+## 13. Veri modeli (taslak)
 
 ```
-Location     (id, name, address, timezone)
-Device       (id, name, location_id, status, last_seen_at, agent_version,
-              resolution, orientation, token_hash, manifest_version)
-DeviceGroup  (id, name)                 ── çoka-çok ── Device
-Media        (id, type[image|video], original_path, variants, duration,
-              width, height, sha256, size, thumbnail, status)
-Playlist     (id, name)
-PlaylistItem (id, playlist_id, media_id, position, duration_sec)
-Schedule     (id, playlist_id, target_type[device|group|location], target_id,
-              days, start_time, end_time, start_date, end_date, priority)
-Command      (id, device_id, type, params, status, created_at, result)
-User         (id, email, password_hash, role)
+User          (id, name, email, password_hash, role[admin|editor|viewer], totp, status)
+UserLocation  (user_id, location_id)              ← konum kısıtı
+Invite        (id, email, role, token_hash, expires_at, used_at)
+Location      (id, name, address, timezone)
+Device        (id, name, location_id, status, last_seen_at, token_hash,
+               model, android_version, app_version, free_storage, codecs,
+               resolution, manifest_version, volume)
+DeviceGroup   (id, name)                          ── çoka-çok ── Device
+Media         (id, type[image|video], original_name, file_path, duration,
+               width, height, sha256, size, thumbnail, status, uploaded_by)
+Playlist      (id, name, created_by)
+PlaylistItem  (id, playlist_id, media_id, position, duration_sec)
+Schedule      (id, playlist_id, target_type[device|group|location], target_id,
+               days, start_time, end_time, start_date, end_date, priority)
+Command       (id, device_id, type, params, status, created_by, created_at, result)
+AuditLog      (id, user_id, action, entity, entity_id, before, after, ip, created_at)
 ```
 
-Zamanlama kuralı: bir cihaz için o anda geçerli zamanlamalar arasından **en yüksek öncelikli** olanın listesi oynar; hiçbiri geçerli değilse cihazın varsayılan listesi oynar. "Acil duyuru" en yüksek öncelikli, geçici bir zamanlama olarak modellenebilir.
+Zamanlama kuralı: o anda geçerli zamanlamalardan **en yüksek öncelikli** olanın listesi oynar;
+hiçbiri geçerli değilse varsayılan liste oynar.
 
-## 8. Güvenlik
+## 14. TV kurulum kontrol listesi
 
-- Tüm trafik TLS ile şifreli (HTTPS/WSS).
-- Cihaz kimliği: eşleştirmede verilen token; sunucuda yalnızca hash'i saklanır, panelden iptal edilebilir.
-- Medya indirme linkleri kısa ömürlü imzalı URL'ler.
-- Panel: güçlü parola (argon2 ile hash), oturum yönetimi; ileride 2FA ve roller (yönetici / içerik editörü).
-- Cihazlar: varsayılan kullanıcı/parola yok, parola ile SSH kapalı, erişim yalnızca Tailscale üzerinden anahtar ile.
-- Cihaza fiziksel erişimi olan biri token'ı ele geçirebilir; bu yüzden token yalnızca o cihazın kendi manifestine erişim verir ve iptal edilebilir.
+Her TV için bir kez yapılır:
 
-## 9. Donanım
+1. TV'nin modelini ve Android sürümünü not et (Ayarlar → Hakkında).
+2. "Bilinmeyen kaynaklardan yükleme" iznini aç, APK'yı kur.
+3. Android 10+ ise "Diğer uygulamaların üzerinde göster" iznini ver (menüde yoksa adb ile).
+4. **Otomatik kapanma / enerji tasarrufu zamanlayıcısını kapat**, ekran koruyucuyu kapat.
+5. Gerekirse TV'nin kendi açılma/kapanma zamanlayıcısını ayarla.
+6. Eski TV + çubuk: TV'nin açılış kaynağını çubuğun takılı olduğu HDMI'a ayarla.
+7. Uygulamanın **bağlantı testi** ekranını çalıştır (tarayıcıyla test etme).
+8. Eşleştirme kodunu panele gir; test videosunun sesli oynadığını doğrula.
+9. **Fişi çekip tak:** Uygulama kendiliğinden açılıyor ve oynatmaya devam ediyor mu?
+10. Sonuçları panelde TV kaydına not düş.
 
-| Seçenek | Artı | Eksi |
-|---|---|---|
-| **Raspberry Pi 4 (2–4 GB)** | Uygun fiyatlı, yaygın; H.264 1080p ve HEVC 4K donanımsal çözme | 4K H.264 oynatamaz |
-| **Raspberry Pi 5 (2–4 GB)** | Daha hızlı işlemci; HEVC 4K donanımsal çözme | **H.264 donanım çözücüsü yok** (1080p yazılımla oynar), daha fazla güç ve ısı |
-| Intel N100 sınıfı mini PC | Çok güçlü, x86, her codec'te 4K, Chromium rahat çalışır | Daha pahalı ve büyük |
-| Android TV kutusu / Fire TV | Ucuz, iyi video çözme | Ayrı Android uygulaması gerekir, sistem kontrolü kısıtlı |
+## 15. Güvenlik
 
-**Öneri:** Raspberry Pi 4 veya 5 (2 GB+). Ajan genel bir Linux uygulaması olacağı için aynı yazılım mini PC'lerde de çalışır. İhtiyaç olursa Android oynatıcı ileride ayrı bir istemci olarak eklenebilir.
+- Dışarıya açık yalnız 80/443; veritabanı ve iç servisler dışarıya kapalı.
+- Sunucuda otomatik güvenlik güncellemeleri. SSH yalnız anahtarla, tercihen yalnız Tailscale
+  üzerinden.
+- Giriş ve eşleştirme uçlarında hız sınırı (kaba kuvvet denemelerine karşı).
+- Dosya indirme her istekte cihaz/kullanıcı yetkisiyle kontrol edilir.
+- Çubuklar Google sertifikalı modellerden seçilir (§5.2).
 
-**Video formatı:** Pi 4 ve Pi 5'in donanım çözücüleri farklı olduğundan sunucu her videoyu ikisinin de donanımsal çözebildiği ortak bir formata dönüştürmeli. Aday: H.265/HEVC, ekrana göre 1080p veya 4K. Kullanıcı hangi formatta yüklerse yüklesin cihazlarda sorunsuz oynar. Kesin profil gerçek cihazlarda test edilerek belirlenecek. Not: HEVC'ye dönüştürme küçük bir VPS'te yavaş olabilir; içerik önceden hazırlandığı için bu bekleme kabul edilebilir.
+## 16. Dayanıklılık
 
-Cihaz başına ek malzeme:
+- **Sunucu giderse:** TV'ler önbellekten oynamaya devam eder; yalnız yeni içerik dağıtılamaz.
+- **Elektrik kesintisi:** TV açılınca uygulama kendiliğinden başlar ve önbellekten oynatır.
+- **Saat:** Zamanlamalar TV saatine dayanır; Android saati internetten senkronlar. Saat
+  bilinmiyorsa varsayılan liste oynar.
+- **Disk dolması:** İndirmeden önce boş alan kontrolü, kullanılmayan dosyaların silinmesi.
+- **Yedek:** Her gece veritabanı + medya, sunucu dışında bir yere.
 
-- Resmî güç adaptörü (yetersiz güç = rastgele donma ve SD kart bozulması)
-- Yüksek dayanıklı (High Endurance) microSD veya USB SSD
-- Soğutmalı kasa
-- micro-HDMI → HDMI kablo
-- Mümkünse Ethernet kablosu
+## 17. Yol haritası
 
-## 10. Dayanıklılık: dikkat edilecekler
+**Faz 0 — Pilot (önce bu)**
+- Minimal bir test APK'sı: açılışta kendiliğinden başlar, sesli test videosu döndürür, cihaz
+  bilgisini gösterir.
+- Farklı marka 2–3 TV + 1 çubukta denenir. Kendiliğinden başlama, otomatik kapanma, oynatma ve
+  güncelleme davranışı tabloya yazılır.
+- Sonuç: en düşük Android sürümü kararı ve hangi TV'nin çubuğa ihtiyacı olduğu.
 
-- **Elektrik kesintisi / SD kart bozulması:** TV'ler sık sık fişten çekilir. Sistem bölümü **salt-okunur** (overlay filesystem) yapılır; yazılabilen tek alan medya önbelleği ve ajan ayarlarıdır.
-- **Saat:** Pi'lerde pil takılı değilse kapalıyken saati tutan bir saat yok. Zamanlamalar doğru saate dayandığı için açılışta NTP senkronizasyonu beklenir; saat bilinmiyorsa varsayılan liste oynatılır.
-- **Çökme / donma:** systemd otomatik yeniden başlatma + donanım watchdog.
-- **Disk dolması:** indirme öncesi boş alan kontrolü, kullanılmayan dosyaların silinmesi.
-- **TV kapanması / kaynak değişmesi:** HDMI-CEC ile TV'yi açma ve "aktif kaynak" olma.
-- **Ajan güncellemesi (OTA):** ajan yeni sürümü sunucudan indirip kendini günceller; yeni sürüm başlamazsa eski sürüme döner.
-- **Ekranın kararması:** ekran koruyucu ve güç yönetimi kapatılır; TV'yi kapatma zamanlaması panelden yönetilir.
+**Faz 1 — MVP**
+- Sunucu + panel: giriş, kullanıcılar ve roller, medya yükleme, oynatma listesi, TV'ye atama.
+- Uygulama: eşleştirme, manifest senkronu, çevrimdışı oynatma, heartbeat, bağlantı testi ekranı.
+- Panelde TV'lerin çevrimiçi/çevrimdışı durumu.
 
-## 11. Yol haritası
+**Faz 2 — Filo yönetimi**
+- Konumlar, gruplar, zamanlama.
+- Video dönüştürme + ses normalizasyonu, thumbnail.
+- Uzaktan komutlar, ekran görüntüsü, uzaktan uygulama güncellemesi.
+- 2FA, işlem kaydı, konum bazlı yetki.
 
-**Faz 1: MVP**
+**Faz 3 — Gelişmiş**
+- Acil duyuru (tüm TV'lerde öncelikli içerik).
+- Oynatma raporları (hangi içerik nerede, ne zaman oynadı).
+- Yayın onay akışı.
 
-- Sunucu + panel: giriş, medya yükleme (resim/video), oynatma listesi, cihaza atama
-- Cihaz: eşleştirme, manifest senkronu, çevrimdışı oynatma (mpv), heartbeat
-- Panelde çevrimiçi/çevrimdışı durumu
+## 18. Riskler
 
-**Faz 2: Filo yönetimi**
+| Risk | Önlem |
+|---|---|
+| Bazı TV markaları uygulamayı açılışta başlatmıyor ya da arka planda kapatıyor | Faz 0 pilotu; aşılamazsa o TV'ye çubuk |
+| TV'lerde onaysız uygulama güncellemesi mümkün olmayabilir | Çubuklarda Device Owner; TV'lerde Tailscale + adb ya da yerinde onay |
+| Sunucunun upload hızı yetersiz | İndirme sırası, kaldığı yerden devam, makul video bit hızı |
+| Konumdaki Wi-Fi alan adı filtreliyor | Uygulamadaki bağlantı testi; gerekirse ağ yöneticisinden izin |
+| TV'de depolama az | Boş alan ölçümü ve önbellek bütçesi |
+| Tek sunucu | TV'ler çevrimdışı çalışmaya devam eder; düzenli yedek |
 
-- Konumlar / gruplar, zamanlama (gün/saat)
-- Video dönüştürme ve thumbnail
-- Uzaktan komutlar (yeniden başlat, ekran görüntüsü, CEC ile TV aç/kapat)
-- Hazır cihaz imajı (SD kartı yaz → tak → çalışsın), ajan OTA güncelleme
+## 19. Kaynaklar
 
-**Faz 3: Gelişmiş**
-
-- Çoklu bölgeli ekran düzenleri, web sayfası/URL içerik (Chromium modu)
-- Acil duyuru, oynatma raporları (hangi içerik ne zaman, nerede oynadı)
-- Çok kullanıcılı roller, işlem kaydı
-
-## 12. Tech stack önerisi (taslak, sonraki adımda kesinleşecek)
-
-| Katman | Öneri | Gerekçe |
-|---|---|---|
-| Dil | **TypeScript** (her yerde) | Sunucu, panel ve cihaz ajanı aynı dil; mesaj protokolünün tipleri tek pakette paylaşılır |
-| Monorepo | pnpm workspaces | `apps/server`, `apps/web`, `apps/agent`, `packages/protocol` |
-| Backend | Node.js + Fastify + WebSocket | Hafif, hızlı, WebSocket desteği iyi |
-| Mesaj doğrulama | Zod | Protokol mesajları hem sunucuda hem cihazda aynı şemayla doğrulanır |
-| Veritabanı | PostgreSQL + Drizzle ORM | Güvenilir; ilişkisel veri modelimize uygun |
-| İş kuyruğu | pg-boss (PostgreSQL üzerinde) | ffmpeg işleri için ayrı Redis gerekmez |
-| Medya işleme | ffmpeg / ffprobe | Dönüştürme, thumbnail, metadata |
-| Medya depolama | Başta sunucu diski → büyüyünce S3 uyumlu depolama (ör. Cloudflare R2) | R2'de indirme (çıkış) trafiği ücretsiz; çok sayıda TV'ye video dağıtırken önemli |
-| Dosya yükleme | tus protokolü (Uppy) | Büyük videolarda kaldığı yerden devam |
-| Panel | React + Vite + TanStack Query + Tailwind + shadcn/ui | Hızlı geliştirme, modern arayüz |
-| Sunucu dağıtımı | Docker Compose + Caddy (otomatik HTTPS), küçük bir VPS | Tek komutla kurulum, düşük maliyet |
-| Cihaz işletim sistemi | Raspberry Pi OS Lite (64-bit) | Masaüstü yok, resmî destek |
-| Oynatıcı | mpv (DRM/KMS + donanımsal çözme), JSON IPC | Hafif, kararlı, resim + video |
-| Ajan | Node.js (TypeScript), systemd servisi | Ortak protokol paketini kullanır |
-| TV kontrolü | HDMI-CEC (`cec-ctl`) | TV aç/kapat, aktif kaynak |
-| Bakım erişimi | Tailscale | Port açmadan SSH |
-| Cihaz imajı | pi-gen ile özel imaj (Faz 2) | Tak-çalıştır kurulum |
-
-Alternatifler: Python (FastAPI) sunucu + Python ajan; ya da ajanı Go ile tek dosyalık bir program olarak yazmak (kurulumu ve güncellemesi kolay). TypeScript'i, üç parçanın aynı dili ve aynı protokol tanımlarını paylaşması için öneriyoruz.
-
-## 13. Açık sorular
-
-1. Kaç TV / kaç konum hedefleniyor? (5 mi, 50 mi, daha fazlası mı?)
-2. Sunucu için aylık küçük ücretli bir bulut VPS uygun mu, yoksa evde mi barınsın?
-3. Hangi dillerde/çerçevelerde rahatsın? (TypeScript önerisi buna göre değişebilir.)
-4. 4K içerik ve dikey (portre) ekran ihtiyacı var mı? Videoların sesi çalınacak mı?
-5. Elde hangi donanım var (Pi 4 / Pi 5 / başka)?
-6. Sadece resim + video mu, yoksa ileride web sayfası / çoklu bölgeli ekran / canlı yayın da olacak mı?
-7. Paneli yalnızca sen mi kullanacaksın, yoksa farklı yetkilere sahip başka kullanıcılar da olacak mı?
+- Xiaomi TV Stick 4K Türkiye fiyatları: [Cimri](https://www.cimri.com/medya-oynatici-player/en-ucuz-xiaomi-4k-tv-stick-medya-oynatici-fiyatlari,1678862953), [MediaMarkt](https://www.mediamarkt.com.tr/tr/product/_xiaomi-mi-tv-stick-4k-2gen-media-oynatici-1255133.html)
+- Raspberry Pi Zero 2 W Türkiye fiyatları: [Samm Market](https://market.samm.com/raspberry-pi-zero-2-w-en), [Direnç.net](https://www.direnc.net/raspberry-pi-zero-2-w)
+- Fire TV ve Vega OS (dışarıdan APK kurulamıyor): [AFTVnews](https://www.aftvnews.com/tag/sideload/), [Android Authority](https://www.androidauthority.com/fire-tv-stick-hd-sideloading-warning-3658819/)
+- BadBox 2.0 / FBI uyarısı: [BleepingComputer](https://www.bleepingcomputer.com/news/security/fbi-badbox-20-android-malware-infects-millions-of-consumer-devices/), [TechRadar](https://www.techradar.com/pro/security/fbi-warns-dangerous-badbox-2-0-malware-has-hit-over-a-million-devices-heres-how-to-stay-safe)
+- MinIO topluluk sürümünün durumu: [Linuxiac](https://linuxiac.com/minio-ends-active-development/), [ayedo](https://ayedo.de/en/posts/minio-im-maintenance-mode/)
+- Media3 sürüm notları: [Android Developers](https://developer.android.com/jetpack/androidx/releases/media3)
