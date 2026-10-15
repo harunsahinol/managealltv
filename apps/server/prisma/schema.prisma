@@ -1,0 +1,411 @@
+// ManageAllTV database schema.
+//
+// Conventions: tables are mapped to snake_case names, columns keep Prisma's camelCase names
+// (the Better Auth tables must keep the field names Better Auth expects). Application ids are cuids;
+// Better Auth generates its own ids for user/session/account/verification/twoFactor rows.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------ Better Auth (core + twoFactor)
+
+enum UserRole {
+  admin
+  editor
+  viewer
+}
+
+model User {
+  id               String   @id
+  name             String
+  email            String   @unique
+  emailVerified    Boolean  @default(false)
+  image            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+  // Added by the twoFactor plugin.
+  twoFactorEnabled Boolean? @default(false)
+  // Additional fields (input: false in Better Auth; only the admin API changes them).
+  role             UserRole @default(viewer)
+  disabled         Boolean  @default(false)
+
+  sessions         Session[]
+  accounts         Account[]
+  twoFactors       TwoFactor[]
+  locations        UserLocation[]
+  invitesCreated   Invite[]       @relation("InviteCreatedBy")
+  resetInvites     Invite[]       @relation("InviteTarget")
+  mediaUploaded    Media[]
+  playlistsCreated Playlist[]
+  schedules        Schedule[]
+  commands         Command[]
+  auditLogs        AuditLog[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+
+// ------------------------------------------------------------------ users, locations, invites
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  /// IANA time zone, e.g. Europe/Istanbul. Schedules of devices here are evaluated in it.
+  timezone  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  devices Device[]
+  users   UserLocation[]
+
+  @@map("location")
+}
+
+/// Location restriction for editors/viewers. Admins have no rows (they see everything).
+model UserLocation {
+  userId     String
+  locationId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, locationId])
+  @@index([locationId])
+  @@map("user_location")
+}
+
+enum InviteKind {
+  invite
+  password_reset
+}
+
+/// One-time links handed out by an admin (no e-mail server). Only the SHA-256 of the token is stored.
+model Invite {
+  id          String     @id @default(cuid())
+  kind        InviteKind
+  tokenHash   String     @unique
+  name        String
+  /// Lower-cased.
+  email       String
+  /// kind=invite: role and locations the new user gets. locationIds are re-checked on accept.
+  role        UserRole?
+  locationIds String[]   @default([])
+  /// kind=password_reset: the user whose password is reset.
+  userId      String?
+  user        User?      @relation("InviteTarget", fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdById String?
+  createdBy   User?      @relation("InviteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+
+  @@index([email])
+  @@index([userId])
+  @@map("invite")
+}
+
+// ------------------------------------------------------------------ devices
+
+model Device {
+  id         String   @id @default(cuid())
+  name       String
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  /// SHA-256 (hex) of the bearer token. Null between claim and the first poll that delivers the token.
+  tokenHash  String?  @unique
+
+  // DeviceInfo reported at pairing (app/storage fields are refreshed by status reports).
+  hardwareId        String
+  manufacturer      String
+  model             String
+  androidVersion    String
+  sdkInt            Int
+  appVersionName    String
+  appVersionCode    Int
+  screenWidth       Int
+  screenHeight      Int
+  freeStorageBytes  BigInt
+  totalStorageBytes BigInt
+  videoDecoders     String[] @default([])
+
+  lastSeenAt        DateTime?
+  /// Last DeviceStatus the device reported (protocol shape), null until the first report.
+  status            Json?
+  /// Bumped whenever the manifest content hash changes (see services/manifest.ts).
+  manifestVersion   Int       @default(1)
+  manifestHash      String?
+  defaultPlaylistId String?
+  defaultPlaylist   Playlist? @relation(fields: [defaultPlaylistId], references: [id], onDelete: Restrict)
+  /// 0-100; null leaves the TV's own volume alone.
+  volume            Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  commands Command[]
+  pairings DevicePairing[]
+
+  @@index([locationId])
+  @@index([defaultPlaylistId])
+  @@map("device")
+}
+
+model DevicePairing {
+  id              String    @id @default(cuid())
+  /// Six digits; unique among open (unexpired, unclaimed) pairings, enforced by the server.
+  code            String
+  /// SHA-256 (hex) of the pairing secret only the device knows.
+  secretHash      String    @unique
+  /// DeviceInfo sent by the device.
+  info            Json
+  ip              String?
+  expiresAt       DateTime
+  claimedDeviceId String?
+  claimedDevice   Device?   @relation(fields: [claimedDeviceId], references: [id], onDelete: Cascade)
+  claimedAt       DateTime?
+  /// Set when the token was delivered; a consumed pairing answers "expired".
+  consumedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([code])
+  @@index([expiresAt])
+  @@index([claimedDeviceId])
+  @@map("device_pairing")
+}
+
+enum CommandStatus {
+  pending
+  sent
+  succeeded
+  failed
+  expired
+}
+
+model Command {
+  id          String        @id @default(cuid())
+  deviceId    String
+  device      Device        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  /// The protocol Command object ({ type, ...params }).
+  payload     Json
+  status      CommandStatus @default(pending)
+  /// Result message from the device (or the server, e.g. on expiry).
+  message     String?
+  createdById String?
+  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  sentAt      DateTime?
+  completedAt DateTime?
+
+  @@index([deviceId, createdAt])
+  @@index([status, createdAt])
+  @@map("command")
+}
+
+// ------------------------------------------------------------------ media, playlists, schedules
+
+enum MediaType {
+  image
+  video
+}
+
+enum MediaStatus {
+  processing
+  ready
+  failed
+}
+
+model Media {
+  id           String      @id @default(cuid())
+  /// Display name (editable).
+  name         String
+  type         MediaType
+  status       MediaStatus @default(processing)
+  /// Turkish error message when status=failed.
+  error        String?
+  /// Original file name as uploaded.
+  fileName     String
+  /// MIME type of the processed file (determines the extension under files/, see lib/storage.ts).
+  mimeType     String?
+  /// Size in bytes of the processed file.
+  size         BigInt?
+  /// Lowercase hex SHA-256 of the processed file.
+  sha256       String?
+  durationMs   Int?
+  width        Int?
+  height       Int?
+  uploadedById String?
+  uploadedBy   User?       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  playlistItems PlaylistItem[]
+
+  @@index([createdAt])
+  @@index([status])
+  @@map("media")
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  name        String
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items     PlaylistItem[]
+  /// Devices using this playlist as default (Restrict: API answers 409 playlist_in_use first).
+  devices   Device[]
+  schedules Schedule[]
+
+  @@map("playlist")
+}
+
+model PlaylistItem {
+  id          String   @id @default(cuid())
+  playlistId  String
+  playlist    Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  mediaId     String
+  /// Restrict: the API answers 409 media_in_use before deleting media that is in a playlist.
+  media       Media    @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  /// 0-based order inside the playlist.
+  position    Int
+  /// Image duration; null = default (images) or play to the end (videos).
+  durationSec Int?
+
+  @@unique([playlistId, position])
+  @@index([mediaId])
+  @@map("playlist_item")
+}
+
+enum ScheduleTargetType {
+  device
+  location
+}
+
+enum Weekday {
+  mon
+  tue
+  wed
+  thu
+  fri
+  sat
+  sun
+}
+
+/// A schedule rule. The target is polymorphic (device or location id) and has no foreign key;
+/// deleting a device or location deletes its rules in the same transaction (services/devices.ts,
+/// routes/locations.ts).
+model Schedule {
+  id          String             @id @default(cuid())
+  playlistId  String
+  playlist    Playlist           @relation(fields: [playlistId], references: [id], onDelete: Restrict)
+  targetType  ScheduleTargetType
+  targetId    String
+  /// Empty = every day.
+  days        Weekday[]          @default([])
+  /// "HH:MM" in the location's time zone.
+  startTime   String             @db.VarChar(5)
+  endTime     String             @db.VarChar(5)
+  /// "YYYY-MM-DD" (inclusive), checked against the day the window starts.
+  startDate   String?            @db.VarChar(10)
+  endDate     String?            @db.VarChar(10)
+  priority    Int                @default(0)
+  createdById String?
+  createdBy   User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([targetType, targetId])
+  @@index([playlistId])
+  @@map("schedule")
+}
+
+// ------------------------------------------------------------------ audit
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// e.g. device.claim, user.update, location.delete
+  action     String
+  entityType String
+  entityId   String?
+  /// Turkish, human readable.
+  summary    String
+  /// Optional structured before/after values.
+  details    Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@map("audit_log")
+}
