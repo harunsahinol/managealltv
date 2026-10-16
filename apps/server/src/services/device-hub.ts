@@ -10,6 +10,8 @@ export const WS_CLOSE = {
   shutdown: { code: 1001, reason: "server shutting down" },
 } as const;
 
+const WS_OPEN = 1;
+
 interface Connection {
   ws: WSContext;
   connectedAt: number;
@@ -62,6 +64,11 @@ export class DeviceHub {
   send(deviceId: string, message: ServerToDevice): boolean {
     const connection = this.connections.get(deviceId);
     if (!connection) return false;
+    // ws silently drops data on a closing socket; report it as undelivered so commands stay pending.
+    if (connection.ws.readyState !== WS_OPEN) {
+      this.detach(deviceId, connection.ws);
+      return false;
+    }
     try {
       connection.ws.send(JSON.stringify(message));
       return true;

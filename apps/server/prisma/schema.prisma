@@ -281,33 +281,40 @@ enum MediaStatus {
 }
 
 model Media {
-  id           String      @id @default(cuid())
+  id             String      @id @default(cuid())
   /// Display name (editable).
-  name         String
-  type         MediaType
-  status       MediaStatus @default(processing)
+  name           String
+  type           MediaType
+  status         MediaStatus @default(processing)
   /// Turkish error message when status=failed.
-  error        String?
+  error          String?
   /// Original file name as uploaded.
-  fileName     String
+  fileName       String
+  /// MIME type the uploader declared (tus "filetype" metadata), used to pick the processing path.
+  sourceMimeType String?
+  /// tus upload id of the original under MEDIA_DIR/uploads/ (lib/storage.ts uploadPath); cleared
+  /// once processing deleted the original. Unique so a repeated upload-finished hook cannot create
+  /// two media rows for one upload.
+  uploadId       String?     @unique
   /// MIME type of the processed file (determines the extension under files/, see lib/storage.ts).
-  mimeType     String?
+  mimeType       String?
   /// Size in bytes of the processed file.
-  size         BigInt?
+  size           BigInt?
   /// Lowercase hex SHA-256 of the processed file.
-  sha256       String?
-  durationMs   Int?
-  width        Int?
-  height       Int?
-  uploadedById String?
-  uploadedBy   User?       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  sha256         String?
+  durationMs     Int?
+  width          Int?
+  height         Int?
+  uploadedById   String?
+  uploadedBy     User?       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   playlistItems PlaylistItem[]
 
   @@index([createdAt])
   @@index([status])
+  @@index([uploadedById])
   @@map("media")
 }
 

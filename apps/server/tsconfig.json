@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // vitest.config.ts imports test/test-env.ts with its extension (Vite's native config loader needs it).
+    "allowImportingTsExtensions": true
   },
   "include": ["src", "test", "vitest.config.ts"]
 }

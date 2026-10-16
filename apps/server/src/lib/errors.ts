@@ -28,8 +28,11 @@ export const forbidden = (message = "Bu işlem için yetkiniz yok") => new HttpE
 export const notFound = (message = "Kayıt bulunamadı", code = "not_found") => new HttpError(404, code, message);
 export const conflict = (code: string, message: string) => new HttpError(409, code, message);
 
-/** Turkish, single-line summary of a ZodError (messages come from zod's Turkish locale). */
-export function describeZodError(error: z.ZodError): string {
+/**
+ * Turkish, single-line summary of a ZodError. Issue messages come from zod's Turkish locale, which
+ * app.ts installs globally (z.config(z.locales.tr())), or from the schema's own Turkish messages.
+ */
+export function describeZodError(error: z.core.$ZodError): string {
   const parts = error.issues.slice(0, 5).map((issue) => {
     const path = issue.path.map(String).join(".");
     return path ? `${path}: ${issue.message}` : issue.message;
@@ -38,6 +41,6 @@ export function describeZodError(error: z.ZodError): string {
   return `Geçersiz istek. ${parts.join("; ")}${more}`;
 }
 
-export function validationError(error: z.ZodError): HttpError {
+export function validationError(error: z.core.$ZodError): HttpError {
   return new HttpError(400, "validation_error", describeZodError(error));
 }

@@ -130,12 +130,18 @@ export async function acceptInvite(token: string, password: string): Promise<Acc
       throw conflict("email_taken", "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten var.");
     }
     if (!(await consume(invite.id, now))) throw notFound(INVALID_LINK);
+    let createdUserId: string | null = null;
     try {
       const hash = await ctx.password.hash(password);
+      // The internal adapter cannot join a Prisma transaction, so a failure after createUser is
+      // undone by hand below; otherwise a half-created user would block the e-mail forever.
       const user = await ctx.internalAdapter.createUser(
         { name: invite.name, email: invite.email, emailVerified: true, role: invite.role ?? "viewer", disabled: false },
         { method: "admin" },
       );
+      createdUserId = user.id;
+      // accountId = userId and providerId "credential" is what Better Auth's own sign-up writes and
+      // what sign-in/email looks up.
       await ctx.internalAdapter.createAccount({ userId: user.id, providerId: "credential", accountId: user.id, password: hash });
       if (invite.role !== "admin" && invite.locationIds.length > 0) {
         // Locations deleted since the invite was issued are silently dropped.
@@ -147,6 +153,7 @@ export async function acceptInvite(token: string, password: string): Promise<Acc
       }
       return { kind: "invite", userId: user.id, email: user.email, name: user.name };
     } catch (error) {
+      if (createdUserId !== null) await prisma.user.deleteMany({ where: { id: createdUserId } });
       await release(invite.id);
       throw error;
     }

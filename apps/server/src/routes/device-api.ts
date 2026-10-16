@@ -7,7 +7,7 @@ import {
   PairRequest,
   type StatusAck,
 } from "@managealltv/protocol";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import type { WSContext } from "hono/ws";
 import { z } from "zod";
 import { prisma } from "../db";
@@ -115,7 +115,8 @@ export function deviceApiRoutes(options: DeviceApiOptions) {
   router.get(
     "/ws",
     requireDevice,
-    options.upgradeWebSocket((c) => {
+    options.upgradeWebSocket((c: Context<AppEnv>) => {
+      // requireDevice already ran on the upgrade request; a bad token never reaches this point (401).
       const deviceId = c.get("device").id;
       return {
         onOpen: (_event, ws) => {

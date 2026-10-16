@@ -4,7 +4,6 @@ import java.time.DateTimeException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeParseException
 import tv.managealltv.player.core.protocol.Manifest
 import tv.managealltv.player.core.protocol.ScheduleRule
 import tv.managealltv.player.core.protocol.Weekday
@@ -98,14 +97,11 @@ object ScheduleEvaluator {
 
     private fun dayMatches(rule: ScheduleRule, date: LocalDate, weekday: Weekday): Boolean {
         if (rule.days.isNotEmpty() && weekday !in rule.days) return false
-        if (rule.startDate != null) {
-            val startDate = parseDate(rule.startDate) ?: return false
-            if (date < startDate) return false
-        }
-        if (rule.endDate != null) {
-            val endDate = parseDate(rule.endDate) ?: return false
-            if (date > endDate) return false
-        }
+        // Plain string comparison like schedule.ts: "YYYY-MM-DD" sorts chronologically, and a value the
+        // regex accepts but the calendar does not (e.g. 2026-02-30) still behaves exactly as on the server.
+        val day = date.toString()
+        if (rule.startDate != null && day < rule.startDate) return false
+        if (rule.endDate != null && day > rule.endDate) return false
         return true
     }
 
@@ -117,10 +113,9 @@ object ScheduleEvaluator {
         return match.groupValues[1].toInt() * 60 + match.groupValues[2].toInt()
     }
 
-    private fun parseDate(value: String): LocalDate? =
-        try {
-            LocalDate.parse(value)
-        } catch (_: DateTimeParseException) {
-            null
-        }
+    /** Milliseconds from [instant] to the next full minute: the schedule cannot change in between. */
+    fun millisUntilNextMinute(instant: Instant): Long {
+        val intoMinute = Math.floorMod(instant.toEpochMilli(), 60_000L)
+        return 60_000L - intoMinute
+    }
 }

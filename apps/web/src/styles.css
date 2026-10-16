@@ -1,0 +1,238 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Raw values live on :root (light) and are swapped for dark mode; Tailwind utilities
+ * (bg-surface, text-ink-2, border-line, ...) point at them through @theme inline, so components never
+ * hard-code a colour and dark mode needs no `dark:` variants.
+ *
+ * Palette: cool grey canvas, white working surfaces, a petrol-blue accent for actions and three
+ * semantic colours for device state (on air / attention / fault). The only loud element is the
+ * "screen" of each device card, framed by a dark bezel in both themes.
+ */
+:root {
+  --bg: #f2f4f7;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --surface-3: #eef1f5;
+  --line: #dde2e9;
+  --line-strong: #c4ccd7;
+  --ink: #18202e;
+  --ink-2: #465163;
+  --ink-3: #667085;
+  --accent: #0d6177;
+  --accent-hover: #0a4e60;
+  --accent-soft: #e2f0f3;
+  --accent-ink: #ffffff;
+  --ok: #17784b;
+  --ok-soft: #e3f3e9;
+  --warn: #975406;
+  --warn-soft: #fcf0d9;
+  --bad: #b8322a;
+  --bad-soft: #fae6e4;
+  --bezel: #1a212d;
+  --bezel-edge: #2c3544;
+  --screen-off: #262e3b;
+  --focus: #1f86a3;
+  --overlay: rgb(16 22 32 / 0.45);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f141b;
+    --surface: #161d27;
+    --surface-2: #1a222d;
+    --surface-3: #212b38;
+    --line: #283343;
+    --line-strong: #3a4659;
+    --ink: #e5eaf1;
+    --ink-2: #b0bac8;
+    --ink-3: #8895a8;
+    --accent: #52b5cb;
+    --accent-hover: #72c6d8;
+    --accent-soft: #123039;
+    --accent-ink: #052029;
+    --ok: #4cc38a;
+    --ok-soft: #122d20;
+    --warn: #e5a643;
+    --warn-soft: #33260e;
+    --bad: #f2786e;
+    --bad-soft: #3a1b19;
+    --bezel: #0a0e14;
+    --bezel-edge: #2a3443;
+    --screen-off: #1b222d;
+    --focus: #72c6d8;
+    --overlay: rgb(0 0 0 / 0.6);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-bezel: var(--bezel);
+  --color-bezel-edge: var(--bezel-edge);
+  --color-screen-off: var(--screen-off);
+  --color-focus: var(--focus);
+}
+
+@theme {
+  /* System fonts on purpose: the panel is self-hosted and must not call out to a font CDN. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+
+  /* Dense type scale for a daily tool: 14px body, 13px secondary, 12px captions. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --radius-screen: 4px;
+
+  --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.28), 0 2px 6px rgb(16 24 40 / 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans text-base antialiased;
+    font-feature-settings: "tnum" 1;
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+  }
+
+  dialog::backdrop {
+    background: var(--overlay);
+  }
+
+  input[type="number"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Shared form control look; used by Input, Select and Textarea. */
+  .control {
+    @apply block w-full rounded-control border border-line-strong bg-surface px-3 py-1.5 text-base text-ink;
+    @apply placeholder:text-ink-3 disabled:cursor-not-allowed disabled:bg-surface-3 disabled:text-ink-3;
+    @apply focus-visible:border-focus;
+  }
+
+  .control[aria-invalid="true"] {
+    @apply border-bad;
+  }
+
+  .panel {
+    @apply rounded-panel border border-line bg-surface;
+  }
+
+  /* Table used across list pages: compact rows, sticky header row inside its scroll container. */
+  .data-table {
+    @apply w-full border-collapse text-left text-base;
+  }
+
+  .data-table th {
+    @apply border-b border-line bg-surface-2 px-3 py-2 text-sm font-medium text-ink-2 whitespace-nowrap;
+  }
+
+  .data-table td {
+    @apply border-b border-line px-3 py-2 align-middle;
+  }
+
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .data-table tbody tr:hover td {
+    @apply bg-surface-2;
+  }
+
+  /* The live dot next to an online device; pulses once a few seconds, never when reduced motion is on. */
+  .on-air-dot {
+    position: relative;
+  }
+
+  .on-air-dot::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    border: 2px solid currentColor;
+    opacity: 0;
+    animation: on-air 3s ease-out infinite;
+  }
+
+  @keyframes on-air {
+    0% {
+      transform: scale(0.6);
+      opacity: 0.6;
+    }
+    60%,
+    100% {
+      transform: scale(1.4);
+      opacity: 0;
+    }
+  }
+
+  /* Test-card bars of the brand mark. */
+  .color-bars {
+    background: linear-gradient(
+      90deg,
+      #cfd3d8 0 14.28%,
+      #e3c044 14.28% 28.57%,
+      #4fb3c9 28.57% 42.85%,
+      #46a86c 42.85% 57.14%,
+      #a8579f 57.14% 71.42%,
+      #cc4f3d 71.42% 85.71%,
+      #3a5bbf 85.71% 100%
+    );
+  }
+}

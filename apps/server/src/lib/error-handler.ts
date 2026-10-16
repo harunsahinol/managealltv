@@ -29,7 +29,8 @@ export function handleError(error: Error, c: Context): Response {
     for (const [key, value] of Object.entries(error.headers ?? {})) response.headers.set(key, value);
     return response;
   }
-  if (error instanceof z.ZodError) {
+  // $ZodError covers both classic ZodError (schema.parse in handlers) and core errors.
+  if (error instanceof z.core.$ZodError) {
     return c.json(apiErrorBody("validation_error", describeZodError(error)), 400);
   }
   if (error instanceof HTTPException) {

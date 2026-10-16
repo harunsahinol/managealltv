@@ -35,10 +35,12 @@ export function parseRange(header: string | undefined, size: number): ByteRange 
     return { start: Math.max(0, size - suffix), end: size - 1 };
   }
   const start = Number(rawStart);
-  const end = rawEnd === "" ? size - 1 : Number(rawEnd);
-  if (end < start) return null;
+  // "last < first" is a syntactically invalid range, which RFC 9110 says to ignore (full 200).
+  if (rawEnd !== "" && Number(rawEnd) < start) return null;
+  // "bytes=<size>-" is what a resuming client sends when it already has everything: 416.
   if (start >= size) return "unsatisfiable";
-  return { start, end: Math.min(end, size - 1) };
+  const end = rawEnd === "" ? size - 1 : Math.min(Number(rawEnd), size - 1);
+  return { start, end };
 }
 
 function etagMatches(header: string | undefined, etag: string): boolean {

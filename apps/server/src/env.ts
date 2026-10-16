@@ -26,6 +26,9 @@ const EnvSchema = z.object({
   MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(4_294_967_296),
   DEFAULT_TIMEZONE: z.string().refine(isValidTimeZone, "Geçerli bir IANA saat dilimi olmalı").default("Europe/Istanbul"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error", "silent"]).default("info"),
+  /** ffmpeg / ffprobe executables (looked up in PATH unless absolute). */
+  FFMPEG_PATH: z.string().min(1).default("ffmpeg"),
+  FFPROBE_PATH: z.string().min(1).default("ffprobe"),
   /**
    * Set to true when running behind a reverse proxy (Caddy) that overwrites X-Forwarded-For.
    * Only then is the header used for rate limiting and audit IPs; otherwise it could be spoofed.

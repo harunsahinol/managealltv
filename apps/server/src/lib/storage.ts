@@ -61,6 +61,26 @@ export function uploadPath(uploadId: string): string {
   return path.join(uploadsDir, uploadId);
 }
 
+/** tus keeps each upload's metadata (size, metadata, creation date) next to it as <id>.json. */
+export function uploadInfoPath(uploadId: string): string {
+  return `${uploadPath(uploadId)}.json`;
+}
+
+/** Removes an upload and its tus metadata file; missing files are ignored. */
+export async function removeUploadFiles(uploadId: string): Promise<void> {
+  await Promise.all([uploadPath(uploadId), uploadInfoPath(uploadId)].map((target) => rm(target, { force: true })));
+}
+
+/**
+ * Work file next to the final location (same file system, so the final rename is atomic and a
+ * half-written file is never served). `tag` keeps the outputs of one processing run apart.
+ */
+export function processingTempPath(id: string, tag: string): string {
+  assertSafeId(id);
+  if (!/^[a-z0-9-]{1,32}$/.test(tag)) throw new Error(`Unsafe temp tag: ${tag}`);
+  return path.join(filesDir, `.${id}.${tag}.tmp`);
+}
+
 /** Removes the processed file and thumbnail of a media item; missing files are ignored. */
 export async function removeMediaFiles(id: string, mimeType: string | null): Promise<void> {
   const targets = [thumbnailPath(id)];

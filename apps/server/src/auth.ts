@@ -4,9 +4,18 @@ import { APIError } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { prisma } from "./db";
 import { env, isHttps, publicUrl } from "./env";
+import { logger } from "./logger";
 
-/** Header our own /api/auth handler sets from the trusted client IP (see routes/auth.ts). */
+/**
+ * Header our own /api/auth handler sets from the trusted client IP (see routes/auth.ts); any value a
+ * client sends is removed first.
+ */
 export const CLIENT_IP_HEADER = "x-managealltv-client-ip";
+
+/** Origins allowed to call state-changing endpoints with the session cookie. */
+export function trustedOrigins(): string[] {
+  return [publicUrl.origin, ...env.EXTRA_TRUSTED_ORIGINS];
+}
 
 export const PASSWORD_MIN_LENGTH = 12;
 export const PASSWORD_MAX_LENGTH = 128;
@@ -16,7 +25,7 @@ export const auth = betterAuth({
   baseURL: env.PUBLIC_URL,
   basePath: "/api/auth",
   secret: env.BETTER_AUTH_SECRET,
-  trustedOrigins: [publicUrl.origin, ...env.EXTRA_TRUSTED_ORIGINS],
+  trustedOrigins: trustedOrigins(),
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
@@ -54,6 +63,14 @@ export const auth = betterAuth({
         },
       },
     },
+  },
+  // Login throttling is done by our own limiter in routes/auth.ts (same mechanism and switches as
+  // the rest of the API, so tests can turn it off); Better Auth's would double-count.
+  rateLimit: { enabled: false },
+  logger: {
+    level: env.LOG_LEVEL === "silent" ? "error" : env.LOG_LEVEL,
+    disabled: env.LOG_LEVEL === "silent",
+    log: (level, message, ...args) => logger[level](`better-auth: ${message}`, args.length > 0 ? { args } : undefined),
   },
   advanced: {
     useSecureCookies: isHttps,
