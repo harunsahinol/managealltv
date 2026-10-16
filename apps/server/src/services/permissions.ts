@@ -50,7 +50,7 @@ export async function scheduleScopeWhere(user: AuthUser): Promise<Prisma.Schedul
 /** Loads a device (with its location) the user may see, or throws 404. */
 export async function findDeviceInScope(user: AuthUser, deviceId: string): Promise<DeviceWithLocation> {
   const device = await prisma.device.findFirst({
-    where: { id: deviceId, ...deviceScopeWhere(user) },
+    where: { AND: [{ id: deviceId }, deviceScopeWhere(user)] },
     include: { location: true },
   });
   if (!device) throw notFound("Cihaz bulunamadı");
@@ -61,7 +61,9 @@ export type DeviceWithLocation = Prisma.DeviceGetPayload<{ include: { location: 
 
 /** Throws 404 unless the location exists and is in the user's scope. */
 export async function findLocationInScope(user: AuthUser, locationId: string) {
-  const location = await prisma.location.findFirst({ where: { id: locationId, ...locationScopeWhere(user) } });
+  // AND, not a spread: locationScopeWhere() filters on `id` too, and a spread would replace the
+  // requested id with "any location in scope" (an editor could then target every location).
+  const location = await prisma.location.findFirst({ where: { AND: [{ id: locationId }, locationScopeWhere(user)] } });
   if (!location) throw notFound("Konum bulunamadı");
   return location;
 }

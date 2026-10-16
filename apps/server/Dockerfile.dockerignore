@@ -1,0 +1,17 @@
+# Build context is the repository root (see Dockerfile); only what the image needs is sent.
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/*.log
+.git
+.github
+docs
+deploy
+apps/player-android
+apps/web/src
+apps/web/public
+apps/server/data
+apps/server/test
+apps/server/vitest.config.ts
+packages/*/test

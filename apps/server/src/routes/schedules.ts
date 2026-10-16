@@ -32,7 +32,7 @@ async function assertPlaylistExists(playlistId: string): Promise<{ id: string; n
 
 /** Loads a schedule the user may see (target in scope); out of scope looks like missing (404). */
 async function findScheduleInScope(user: AuthUser, id: string): Promise<ScheduleRow> {
-  const schedule = await prisma.schedule.findFirst({ where: { id, ...(await scheduleScopeWhere(user)) }, include: scheduleInclude });
+  const schedule = await prisma.schedule.findFirst({ where: { AND: [{ id }, await scheduleScopeWhere(user)] }, include: scheduleInclude });
   if (!schedule) throw notFound("Zamanlama bulunamadı");
   return schedule;
 }

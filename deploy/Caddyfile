@@ -1,0 +1,47 @@
+# ManageAllTV reverse proxy: automatic HTTPS (Let's Encrypt) for {$DOMAIN}, the admin panel as static
+# files, and everything under /api (REST, tus uploads, device API incl. its WebSocket) proxied to the
+# Node server. The server is never published on a host port; only this container is.
+#
+# DOMAIN comes from deploy/.env through docker-compose.yml. With DOMAIN=localhost Caddy uses its own
+# local CA instead of Let's Encrypt (handy for a trial run on a laptop).
+
+{$DOMAIN} {
+	# API, uploads and the device API. reverse_proxy handles WebSocket upgrades by itself and, by
+	# default, replaces X-Forwarded-For with the address it saw (the server trusts it: TRUST_PROXY).
+	handle /api/* {
+		reverse_proxy server:3000 {
+			# Stream large responses (video downloads with Range) and upload chunks without buffering.
+			flush_interval -1
+			# A restarting server (update, crash) answers again within seconds; retry instead of 502.
+			lb_try_duration 10s
+		}
+	}
+
+	handle /health {
+		reverse_proxy server:3000
+	}
+
+	# The panel: a single-page app, so unknown paths fall back to index.html (client-side routing).
+	handle {
+		root * /srv/panel
+		# Vite puts content-hashed files under /assets; everything else must be revalidated so a new
+		# deployment is picked up at the next page load.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@notAssets not path /assets/*
+		header @notAssets Cache-Control "no-cache"
+		header {
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "no-referrer"
+		}
+		encode zstd gzip
+		try_files {path} /index.html
+		file_server
+	}
+
+	header Strict-Transport-Security "max-age=31536000"
+
+	# No access log on purpose: invite and password-reset links carry their one-time token in the
+	# URL (/invite/<token>, /api/invites/<token>). The server logs errors itself.
+}

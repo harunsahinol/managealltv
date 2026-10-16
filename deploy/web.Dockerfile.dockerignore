@@ -1,0 +1,15 @@
+# Build context is the repository root (see web.Dockerfile); only what the image needs is sent.
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/*.log
+.git
+.github
+docs
+apps/player-android
+apps/server/src
+apps/server/prisma
+apps/server/test
+apps/server/data
+packages/*/test

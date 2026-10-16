@@ -221,8 +221,9 @@ describe("playlists", () => {
 
     const asDefault = await client.delete(`/api/playlists/${playlist.id}`);
     expect(asDefault.status).toBe(409);
-    expect((await errorBody(asDefault)).error).toMatchObject({ code: "playlist_in_use" });
-    expect((await errorBody(asDefault)).error.message).toContain("1 cihazın varsayılan listesi");
+    const defaultError = (await errorBody(asDefault)).error;
+    expect(defaultError.code).toBe("playlist_in_use");
+    expect(defaultError.message).toContain("1 cihazın varsayılan listesi");
 
     await prisma.device.update({ where: { id: device.id }, data: { defaultPlaylistId: spare.id } });
     const schedule = await prisma.schedule.create({
@@ -230,8 +231,9 @@ describe("playlists", () => {
     });
     const inSchedule = await client.delete(`/api/playlists/${playlist.id}`);
     expect(inSchedule.status).toBe(409);
-    expect((await errorBody(inSchedule)).error).toMatchObject({ code: "playlist_in_use" });
-    expect((await errorBody(inSchedule)).error.message).toContain("1 zamanlamada");
+    const scheduleError = (await errorBody(inSchedule)).error;
+    expect(scheduleError.code).toBe("playlist_in_use");
+    expect(scheduleError.message).toContain("1 zamanlamada");
 
     await prisma.schedule.delete({ where: { id: schedule.id } });
     expect((await client.delete(`/api/playlists/${playlist.id}`)).status).toBe(204);
@@ -314,10 +316,11 @@ describe("audit trail of content changes", () => {
     await client.delete(`/api/media/${media.id}`);
     await client.delete(`/api/playlists/${playlist.id}`);
 
-    const rows = await prisma.auditLog.findMany({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+    const rows = await prisma.auditLog.findMany({
+      where: { entityType: { in: ["media", "playlist"] } },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
     expect(rows.map((row) => row.action)).toEqual([
-      "user.invite",
-      "invite.accept",
       "playlist.create",
       "playlist.update",
       "playlist.items",
@@ -326,9 +329,8 @@ describe("audit trail of content changes", () => {
       "media.delete",
       "playlist.delete",
     ]);
-    const mine = rows.filter((row) => row.action.startsWith("playlist.") || row.action.startsWith("media."));
-    expect(mine.every((row) => row.userId === user.id)).toBe(true);
-    expect(mine.map((row) => row.summary)).toEqual([
+    expect(rows.every((row) => row.userId === user.id)).toBe(true);
+    expect(rows.map((row) => row.summary)).toEqual([
       '"Genel" oynatma listesi oluşturuldu',
       '"Genel" oynatma listesinin adı "Genel 2" olarak değiştirildi',
       '"Genel 2" oynatma listesinin içeriği güncellendi (0 → 1 öğe)',

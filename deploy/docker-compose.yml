@@ -1,0 +1,96 @@
+# ManageAllTV production stack: PostgreSQL, the API server and Caddy (HTTPS + panel).
+# Run from this directory after filling .env (see README.md):
+#
+#   docker compose up -d --build
+#
+# Only Caddy publishes ports (80 for the ACME challenge and the HTTPS redirect, 443 for everything
+# else). PostgreSQL and the server are reachable on the internal networks only.
+
+name: managealltv
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: managealltv
+      POSTGRES_USER: managealltv
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD deploy/.env içinde tanımlanmalı}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U managealltv -d managealltv"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+
+  server:
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+    image: managealltv-server:latest
+    restart: unless-stopped
+    # tini as PID 1: forwards SIGTERM to node and reaps ffmpeg/ffprobe children.
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      # The password goes into a URL: letters and digits only (see .env.example).
+      DATABASE_URL: postgresql://managealltv:${POSTGRES_PASSWORD}@postgres:5432/managealltv
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET deploy/.env içinde tanımlanmalı}
+      PUBLIC_URL: https://${DOMAIN:?DOMAIN deploy/.env içinde tanımlanmalı}
+      PORT: "3000"
+      MEDIA_DIR: /data/media
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-4294967296}
+      DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-Europe/Istanbul}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Caddy overwrites X-Forwarded-For/-Proto/-Host; the server port is not reachable otherwise.
+      TRUST_PROXY: "true"
+    volumes:
+      - media:/data/media
+    # Graceful shutdown waits for running work (the server gives up after 25 s itself).
+    stop_grace_period: 30s
+    networks:
+      - backend
+      - frontend
+
+  web:
+    build:
+      context: ..
+      # Relative to the context (the repository root).
+      dockerfile: deploy/web.Dockerfile
+    image: managealltv-web:latest
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN deploy/.env içinde tanımlanmalı}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      # Mounted so that Caddyfile edits only need `docker compose restart web`.
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and ACME account: keep them, or Let's Encrypt rate limits may bite on rebuilds.
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - frontend
+
+networks:
+  # PostgreSQL has no route to the outside world.
+  backend:
+    internal: true
+  frontend:
+
+volumes:
+  postgres-data:
+  media:
+  caddy-data:
+  caddy-config:
