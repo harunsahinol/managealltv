@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV launcher banner, 320×180 dp: a screen with a play symbol on the brand blue. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="@color/banner_background"
+        android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="@color/accent"
+        android:pathData="M96,38h128v88h-128z" />
+    <path
+        android:fillColor="@color/banner_background"
+        android:pathData="M102,44h116v76h-116z" />
+    <path
+        android:fillColor="@color/text_primary"
+        android:pathData="M146,62l32,20l-32,20z" />
+    <path
+        android:fillColor="@color/accent"
+        android:pathData="M150,126h20v10h-20z" />
+    <path
+        android:fillColor="@color/accent"
+        android:pathData="M126,136h68v6h-68z" />
+</vector>

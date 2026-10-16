@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One activity, layered screens: player (video + two cross-fading image views), "Yayın yok",
+     starting, pairing, and overlays/panels on top. Views only, no Compose (weak TVs). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <FrameLayout
+        android:id="@+id/player_layer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="invisible">
+
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/player_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:focusable="false" />
+
+        <ImageView
+            android:id="@+id/image_a"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            android:visibility="invisible" />
+
+        <ImageView
+            android:id="@+id/image_b"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            android:visibility="invisible" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/no_content_screen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/screen_background"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/overscan_horizontal"
+        android:paddingTop="@dimen/overscan_vertical"
+        android:paddingEnd="@dimen/overscan_horizontal"
+        android:paddingBottom="@dimen/overscan_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/no_content_title"
+            android:textColor="@color/text_primary"
+            android:textSize="56sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/no_content_detail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/starting_screen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/screen_background"
+        android:gravity="center"
+        android:text="@string/starting"
+        android:textColor="@color/text_secondary"
+        android:textSize="24sp" />
+
+    <include
+        android:id="@+id/pairing_screen"
+        layout="@layout/screen_pairing" />
+
+    <include
+        android:id="@+id/identify_overlay"
+        layout="@layout/overlay_identify" />
+
+    <include
+        android:id="@+id/info_overlay"
+        layout="@layout/overlay_info" />
+
+    <include
+        android:id="@+id/connection_panel"
+        layout="@layout/panel_connection_test" />
+
+    <include
+        android:id="@+id/server_panel"
+        layout="@layout/panel_server_settings" />
+</FrameLayout>

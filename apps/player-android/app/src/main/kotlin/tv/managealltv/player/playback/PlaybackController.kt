@@ -49,6 +49,9 @@ class PlaybackController(
 
         fun onItemStarted(plan: PlaybackPlan, item: PlayItem)
 
+        /** The item played to its end (video) or for its full duration (image). */
+        fun onItemFinished(plan: PlaybackPlan, item: PlayItem)
+
         /** [reason] is Turkish; it ends up in the panel as the device's last error. */
         fun onItemFailed(plan: PlaybackPlan, item: PlayItem, reason: String)
     }
@@ -148,7 +151,9 @@ class PlaybackController(
                     val current = plan ?: return@launch
                     if (current.isEmpty) return@launch
                     if (index !in current.items.indices) index = 0
-                    val played = playItem(current, current.items[index])
+                    val item = current.items[index]
+                    val played = playItem(current, item)
+                    if (played) callbacks.onItemFinished(current, item)
                     failuresInARow = if (played) 0 else failuresInARow + 1
                     val latest = plan ?: return@launch
                     if (failuresInARow >= maxOf(1, latest.items.size)) {

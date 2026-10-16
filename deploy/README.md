@@ -38,7 +38,7 @@ Dosyalar:
 
   ```bash
   curl -fsSL https://get.docker.com | sh
-  docker compose version     # "Docker Compose version v2..." yazmalı
+  docker compose version     # "Docker Compose version ..." satırını yazmalı
   ```
 
 ## 2. Kurulum

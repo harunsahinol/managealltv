@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="screen_background">#FF0E1217</color>
+    <color name="panel_background">#F01A2028</color>
+    <color name="scrim">#B3000000</color>
+    <color name="identify_background">#FF0D47A1</color>
+    <color name="banner_background">#FF0F2747</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#FFB4BCC8</color>
+    <color name="accent">#FF4FA3FF</color>
+    <color name="success">#FF5BD68A</color>
+    <color name="error">#FFFF7B7B</color>
+    <color name="button_normal">#FF2A313B</color>
+    <color name="button_border">#FF3E4753</color>
+    <color name="button_focused">#FF4FA3FF</color>
+    <color name="button_text_normal">#FFE6E9EE</color>
+    <color name="button_text_focused">#FF0B0F14</color>
+    <color name="input_background">#FF11161C</color>
+    <color name="input_border">#FF3E4753</color>
+</resources>

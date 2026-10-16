@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every user-facing text of the player (Turkish). Apostrophes must be escaped as \' for aapt2. -->
+<resources>
+    <string name="app_name" translatable="false">ManageAllTV</string>
+    <string name="device_admin_description">Uygulamanın bu TV\'nin ana ekranı olmasını ve uzaktan yeniden başlatılmasını sağlar.</string>
+    <string name="notification_channel_name">Oynatıcı</string>
+    <string name="notification_text">Oynatıcı çalışıyor</string>
+    <string name="starting">Başlatılıyor…</string>
+
+    <!-- Actions -->
+    <string name="action_connection_test">Bağlantı testi</string>
+    <string name="action_server_settings">Sunucu adresi</string>
+    <string name="action_close">Kapat</string>
+    <string name="action_retry">Tekrar dene</string>
+    <string name="action_save">Kaydet</string>
+    <string name="action_use_default">Varsayılan adres</string>
+    <string name="action_cancel">Vazgeç</string>
+
+    <!-- Pairing -->
+    <string name="pairing_title">Bu TV\'yi eşleştirin</string>
+    <string name="pairing_code_placeholder">— — —</string>
+    <string name="pairing_instructions">1. Yönetim panelinde Cihazlar → TV ekle\'yi açın.\n2. Yukarıdaki 6 haneli kodu girin.\n3. TV\'ye bir ad verin ve konumunu seçin.</string>
+    <string name="pairing_requesting">Eşleştirme kodu alınıyor…</string>
+    <string name="pairing_waiting">Kod panele girilmeyi bekliyor. Süresi dolarsa yeni kod otomatik alınır.</string>
+    <string name="pairing_failed_retry">Kod alınamadı: %1$s. %2$d saniye sonra yeniden denenecek.</string>
+    <string name="pairing_poll_failed">Sunucuya ulaşılamıyor (%1$s); yeniden deneniyor.</string>
+    <string name="pairing_invalid_server">Sunucu adresi geçersiz. Sunucu adresi düğmesiyle düzeltin.</string>
+    <string name="pairing_server">Sunucu: %1$s</string>
+    <string name="pairing_hardware_id">Donanım kimliği: %1$s</string>
+
+    <!-- Player -->
+    <string name="no_content_title">Yayın yok</string>
+    <string name="no_content_nothing_scheduled">Şu an için planlanmış bir yayın yok.</string>
+    <string name="no_content_waiting">İçerik bekleniyor…</string>
+    <string name="no_content_downloading">İçerik indiriliyor: %1$s</string>
+    <string name="no_content_error">İçerik alınamadı: %1$s</string>
+    <string name="playback_item_failed">%1$s oynatılamadı: %2$s</string>
+    <string name="playback_image_failed">resim açılamadı</string>
+    <string name="playback_video_failed">video oynatılamadı (%1$s)</string>
+    <string name="playback_video_timeout">video zaman aşımına uğradı</string>
+
+    <!-- Identify -->
+    <string name="identify_label">Bu TV:</string>
+    <string name="identify_unnamed">Adsız TV</string>
+
+    <!-- Info panel -->
+    <string name="info_title">Cihaz bilgisi</string>
+    <string name="info_hint">MENU / INFO tuşu ya da OK tuşuna uzun basma bu paneli açıp kapatır.</string>
+    <string name="info_line">%1$s: %2$s</string>
+    <string name="info_app_version">Uygulama sürümü</string>
+    <string name="info_version_value">%1$s (%2$d)</string>
+    <string name="info_server">Sunucu</string>
+    <string name="info_device_id">Cihaz kimliği</string>
+    <string name="info_device_name">Cihaz adı</string>
+    <string name="info_hardware_id">Donanım kimliği</string>
+    <string name="info_manifest_version">Manifest sürümü</string>
+    <string name="info_sync_state">Senkron durumu</string>
+    <string name="info_last_sync">Son başarılı senkron</string>
+    <string name="info_connection">Sunucu bağlantısı</string>
+    <string name="info_last_error">Son hata</string>
+    <string name="info_overlay_permission">Diğer uygulamaların üzerinde gösterme izni</string>
+    <string name="info_device_owner">Device Owner modu</string>
+    <string name="info_not_paired">Eşleştirilmedi</string>
+    <string name="value_yes">Evet</string>
+    <string name="value_no">Hayır</string>
+    <string name="value_granted">Var</string>
+    <string name="value_missing">Yok</string>
+
+    <string name="sync_not_started">Başlamadı</string>
+    <string name="sync_waiting">İlk senkron bekleniyor</string>
+    <string name="sync_up_to_date">Güncel</string>
+    <string name="sync_downloading">İndiriliyor: %1$s</string>
+    <string name="sync_error">Hata (ayrıntı: Son hata)</string>
+    <string name="sync_progress">%1$d/%2$d dosya, %%%3$d</string>
+
+    <string name="connection_connected">Bağlı</string>
+    <string name="connection_connecting">Bağlanıyor…</string>
+    <string name="connection_disconnected">Bağlantı yok, yeniden denenecek</string>
+    <string name="connection_unauthorized">Yetkisiz (yeniden eşleştirme gerekiyor)</string>
+    <string name="connection_stopped">Durduruldu</string>
+
+    <!-- Connection test -->
+    <string name="conn_title">Bağlantı testi</string>
+    <string name="conn_server">Sunucu: %1$s</string>
+    <string name="conn_running">Test ediliyor…</string>
+    <string name="conn_result_ok">Sunucuya bağlantı başarılı.</string>
+    <string name="conn_result_failed">Sunucuya bağlanılamadı.</string>
+    <string name="conn_result_with_detail">%1$s %2$s</string>
+    <string name="conn_step_line">[%1$s] %2$s: %3$s</string>
+    <string name="conn_outcome_ok">TAMAM</string>
+    <string name="conn_outcome_failed">HATA</string>
+    <string name="conn_outcome_skipped">ATLANDI</string>
+    <string name="conn_outcome_info">BİLGİ</string>
+    <string name="conn_step_clock">Cihaz saati</string>
+    <string name="conn_step_address">Adres</string>
+    <string name="conn_step_network">Ağ</string>
+    <string name="conn_step_dns">DNS</string>
+    <string name="conn_step_tcp">TCP bağlantısı</string>
+    <string name="conn_step_tls">TLS (HTTPS)</string>
+    <string name="conn_step_http">Sunucu (GET /health)</string>
+    <string name="conn_clock">%1$s (%2$s). Saat yanlışsa HTTPS doğrulaması başarısız olur.</string>
+    <string name="conn_address_invalid">%1$s geçerli bir http(s) adresi değil</string>
+    <string name="conn_network_none">Ağ bağlantısı yok. TV\'nin Wi-Fi ayarlarını kontrol edin.</string>
+    <string name="conn_network_wifi">Wi-Fi</string>
+    <string name="conn_network_ethernet">Kablolu ağ</string>
+    <string name="conn_network_other">Diğer ağ</string>
+    <string name="conn_network_not_validated">%1$s bağlı, ancak Android internete erişimi doğrulayamadı (giriş sayfası ya da filtre olabilir)</string>
+    <string name="conn_dns_ok">%1$s → %2$s (%3$d ms)</string>
+    <string name="conn_tcp_ok">Port %1$d açık (%2$d ms)</string>
+    <string name="conn_tls_ok">%1$s, sertifikayı veren: %2$s, geçerlilik sonu %3$s (%4$d ms)</string>
+    <string name="conn_tls_skipped">Şifresiz http adresi (yalnız test sürümünde)</string>
+    <string name="conn_tls_hostname">Sertifika %1$s adına düzenlenmemiş</string>
+    <string name="conn_http_ok">Sunucu çalışıyor (%1$d ms)</string>
+    <string name="conn_http_failed">Beklenmeyen yanıt: HTTP %1$d (%2$d ms)</string>
+
+    <!-- Network errors -->
+    <string name="error_dns">Alan adı çözümlenemedi (DNS). Wi-Fi ağı bu adresi engelliyor olabilir.</string>
+    <string name="error_timeout">Zaman aşımı: sunucu yanıt vermedi</string>
+    <string name="error_connect">Bağlantı kurulamadı (%1$s)</string>
+    <string name="error_tls_handshake">Güvenli bağlantı doğrulanamadı: cihaz saati yanlış olabilir ya da ağ trafiğe müdahale ediyor (%1$s)</string>
+    <string name="error_tls">Güvenli bağlantı hatası (%1$s)</string>
+    <string name="error_cleartext">Şifresiz (http) bağlantıya izin verilmiyor; https adresi kullanın</string>
+    <string name="error_http">Sunucu hatası: HTTP %1$d %2$s</string>
+    <string name="error_protocol">Sunucunun yanıtı anlaşılamadı (sürüm uyumsuzluğu olabilir)</string>
+
+    <!-- Server address -->
+    <string name="server_title">Sunucu adresi</string>
+    <string name="server_help">Yönetim sunucusunun adresini girin, örneğin https://tv.firma.com. Kaydedince eşleştirme bu sunucuyla yeniden başlar.</string>
+    <string name="server_hint">https://tv.firma.com</string>
+    <string name="server_error_empty">Adres boş olamaz.</string>
+    <string name="server_error_invalid">Bu geçerli bir adres değil.</string>
+    <string name="server_error_cleartext">Yalnız https adresleri desteklenir.</string>
+
+    <!-- Remote command results (shown in the panel) -->
+    <string name="cmd_reload_ok">İçerik sunucudan yeniden kontrol ediliyor</string>
+    <string name="cmd_restart_ok">Uygulama yeniden başlatılıyor</string>
+    <string name="cmd_identify_ok">Cihaz adı ekranda %1$d saniye gösteriliyor</string>
+    <string name="cmd_identify_screen_off">TV ekranı kapalı (bekleme modunda); cihaz adı gösterilemedi</string>
+    <string name="cmd_identify_not_visible">Oynatıcı ekranda değil (başka bir uygulama açık ve öne gelme izni yok); cihaz adı gösterilemedi</string>
+    <string name="cmd_reboot_ok">TV yeniden başlatılıyor</string>
+    <string name="cmd_reboot_not_owner">Yeniden başlatma yalnız Device Owner modunda yapılabilir; bu TV Device Owner olarak kurulmamış</string>
+    <string name="volume_set">Ses seviyesi %%%1$d olarak ayarlandı</string>
+    <string name="volume_fixed">Bu TV ses seviyesinin uygulamalar tarafından değiştirilmesine izin vermiyor</string>
+    <string name="volume_unavailable">Ses seviyesi okunamadı</string>
+    <string name="volume_denied">Ses seviyesi değiştirilemedi (%1$s)</string>
+</resources>
