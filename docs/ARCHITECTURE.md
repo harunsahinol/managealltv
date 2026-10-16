@@ -1,7 +1,7 @@
-# ManageAllTV — Sistem Mimarisi (Taslak v0.2)
+# ManageAllTV — Sistem Mimarisi (v0.3)
 
-> **Durum:** Gereksinimler netleşti, mimari ve tech stack önerildi. Uygulamaya geçmeden önce
-> küçük bir pilot (Faz 0, §17) ile TV'ler üzerinde doğrulama yapılacak.
+> **Durum:** Faz 1 (MVP) ve Faz 2'nin büyük kısmı kodlandı: sunucu, yönetim paneli, Android oynatıcı,
+> kurulum dosyaları ve CI. Sıradaki adım pilot (Faz 0, §17): APK'nın gerçek TV'lerde denenmesi.
 
 ## 1. Amaç
 
@@ -219,7 +219,7 @@ Hepsi farklı olduğu için:
 | Katman | Seçim | Gerekçe |
 |---|---|---|
 | Dil | **TypeScript** (Node.js LTS) | Panel de TypeScript; tek dil, hızlı geliştirme |
-| API | **Hono** + `@hono/zod-openapi` | Hafif; Zod şemalarından otomatik OpenAPI belgesi |
+| API | **Hono** + `@hono/zod-validator` | Hafif; istekler protokol paketindeki Zod şemalarıyla doğrulanır |
 | WebSocket | `@hono/node-ws` | TV'lere anlık bildirim ve komut |
 | Veritabanı | **PostgreSQL** + Prisma | İlişkisel modelimize uygun, güvenilir |
 | İş kuyruğu | **pg-boss** | Kuyruk PostgreSQL üzerinde; ayrı Redis gerekmez |
@@ -241,9 +241,12 @@ Cihaz ile sunucu arasındaki mesajlar **tek yerde**, `packages/protocol` içinde
 olarak tanımlanır:
 
 - Sunucu ve panel bu şemaları doğrudan kullanır (TypeScript).
-- Şemalardan OpenAPI / JSON Schema üretilir, bundan da Android uygulamasının **Kotlin veri
-  sınıfları otomatik üretilir**.
-- Bir sözleşme testi, Kotlin tarafının üretilen şemayla uyumlu olduğunu doğrular.
+- Android tarafındaki Kotlin veri sınıfları elle yazılır; uyumu **ortak test örnekleri** güvenceye
+  alır: `packages/protocol/fixtures/*.json` hem Zod şemalarıyla (TypeScript testleri) hem de Kotlin
+  modelleriyle katı modda (bilinmeyen alan yok sayılmadan) çözülüp yeniden kodlanır. Bir alan adı ya da
+  biçim kayarsa iki taraftan birinin testi kırılır.
+- Zamanlama kuralları da aynı yöntemle korunur: `schedule-cases.json` içindeki test vakalarını hem
+  TypeScript hem Kotlin uygulaması çalıştırır.
 
 ### 8.4 Repo yapısı
 
@@ -254,7 +257,7 @@ managealltv/
 │   ├── web/              # Yönetim paneli (React + Vite)
 │   └── player-android/   # Oynatıcı uygulaması (Kotlin, Gradle)
 ├── packages/
-│   └── protocol/         # Zod şemaları → OpenAPI → TS + Kotlin tipleri
+│   └── protocol/         # Zod şemaları + ortak test örnekleri (fixtures)
 ├── deploy/               # docker-compose.yml, Caddyfile, yedekleme script'leri
 └── docs/
 ```
@@ -384,7 +387,7 @@ Komutlar: `reload` (manifesti yeniden çek), `restart_app`, `screenshot`, `set_v
 
 ### 12.2 Kimlik doğrulama
 
-- E-posta + parola (argon2id ile hash), oturum HttpOnly + Secure çerezde.
+- E-posta + parola (Better Auth'un varsayılanı scrypt ile hash), oturum HttpOnly + Secure çerezde.
 - **İki adımlı doğrulama (TOTP)**, Yönetici için zorunlu.
 - **E-posta sunucusu gerekmez:** Yönetici kullanıcıyı ekler, sistem tek kullanımlık bir **davet
   bağlantısı** üretir, Yönetici bunu iletir. Parola sıfırlama da aynı yöntemle yapılır.
