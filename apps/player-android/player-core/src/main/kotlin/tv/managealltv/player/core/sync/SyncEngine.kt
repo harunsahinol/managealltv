@@ -144,6 +144,16 @@ class SyncEngine(
     private val wakeUps = Channel<Unit>(Channel.CONFLATED)
     private var loopJob: Job? = null
 
+    /**
+     * Version whose last sync attempt failed. The server answers every status that still reports the
+     * old version with manifest_updated for this one, and the app sends a status as soon as a sync
+     * fails; acting on those would bypass the error backoff and turn a persistent failure (a file
+     * missing on the server, a corrupt file) into a tight download loop. Its retry is left to the
+     * backoff timer; a newer version or an explicit [requestSync] still syncs at once.
+     */
+    @Volatile
+    private var failedVersion: Int? = null
+
     init {
         // Loaded synchronously so the player can start from the cache before any network activity.
         val applied = cache.loadAppliedManifest()
@@ -185,7 +195,7 @@ class SyncEngine(
     /** Handles a `manifest_updated` WebSocket message or a `StatusAck` version. */
     fun onManifestUpdated(version: Int) {
         val current = _state.value
-        if (version == current.appliedManifest?.version || version == current.targetVersion) return
+        if (version == current.appliedManifest?.version || version == current.targetVersion || version == failedVersion) return
         requestSync()
     }
 
@@ -244,6 +254,15 @@ class SyncEngine(
                 ManifestResult.NotModified -> applied ?: return fail(SyncError.Unexpected("304 without an applied manifest"))
                 is ManifestResult.Updated -> result.manifest
             }
+        // Set before the attempt so that an unexpected exception (caught in syncNow) counts as a failure too.
+        failedVersion = target.version
+        val outcome = syncTo(target, applied)
+        if (outcome !is SyncOutcome.Failed) failedVersion = null
+        return outcome
+    }
+
+    /** Steps 2-4 for [target]; [applied] is the manifest playing now. */
+    private suspend fun syncTo(target: Manifest, applied: Manifest?): SyncOutcome {
         val issues = SyncPlanner.validate(target)
         if (issues.isNotEmpty()) return fail(SyncError.InvalidManifest(issues))
 

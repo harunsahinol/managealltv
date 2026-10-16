@@ -1,6 +1,6 @@
 import type { DeviceStatus } from "@managealltv/protocol";
 import { describe, expect, it } from "vitest";
-import { describeCommand, deviceSync, isLongOffline } from "./devices";
+import { commandSentMessage, describeCommand, deviceSync, isLongOffline } from "./devices";
 
 const status: DeviceStatus = {
   manifestVersion: 7,
@@ -77,5 +77,16 @@ describe("describeCommand", () => {
     expect(describeCommand({ type: "identify", durationSec: 30 })).toBe("Tanımla (30 sn)");
     expect(describeCommand({ type: "set_volume", volume: 35 })).toBe("Ses seviyesi 35");
     expect(describeCommand({ type: "reboot" })).toBe("Yeniden başlat");
+  });
+});
+
+describe("commandSentMessage", () => {
+  it("follows the status the server returned, not the online flag", () => {
+    // Delivered over the WebSocket.
+    expect(commandSentMessage({ command: { type: "reload" }, status: "sent" })).toBe("Yenile komutu gönderildi.");
+    // Online through the HTTP status fallback but no socket: the server keeps the command pending.
+    expect(commandSentMessage({ command: { type: "set_volume", volume: 20 }, status: "pending" })).toBe(
+      "Ses seviyesi 20 komutu sıraya alındı; TV bağlandığında iletilecek.",
+    );
   });
 });

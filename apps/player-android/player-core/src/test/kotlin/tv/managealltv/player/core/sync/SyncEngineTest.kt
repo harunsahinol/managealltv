@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -287,6 +288,41 @@ class SyncEngineTest {
         runBlocking { withTimeout(10_000) { engine.state.first { it.appliedManifest?.version == 2 } } }
         engine.stop()
         assertOnDisk(image1, image3)
+    }
+
+    @Test
+    fun `a re-announced version that just failed waits for the error backoff`() {
+        // The server answers every status whose manifestVersion differs from its own with
+        // manifest_updated, and the app sends a status as soon as a sync fails. Without the guard this
+        // turns a persistent failure (here: a file missing on the server) into a tight retry loop.
+        fake.publish(manifestV1(), listOf(video, image1, image2))
+        fake.content.remove(image2.id)
+        val engine =
+            engine(
+                SyncEngine.Config(
+                    periodicIntervalMs = 60_000,
+                    errorBackoff = ExponentialBackoff(initialDelayMs = 60_000, maxDelayMs = 60_000, jitterRatio = 0.0),
+                ),
+            )
+        val announcer =
+            scope.launch {
+                engine.state.collect { snapshot ->
+                    if (snapshot.syncState == SyncState.ERROR) engine.onManifestUpdated(1)
+                }
+            }
+        engine.start()
+        runBlocking { withTimeout(10_000) { engine.state.first { it.syncState == SyncState.ERROR } } }
+        Thread.sleep(1_500)
+        announcer.cancel()
+
+        val manifestRequests = fake.paths.count { it == "/api/device/v1/manifest" }
+        assertEquals(1, manifestRequests, "the failed version must not be retried before the backoff ends")
+
+        // A newer version, or an explicit request (reload, network back), still syncs at once.
+        fake.content[image2.id] = image2.bytes
+        engine.onManifestUpdated(2)
+        runBlocking { withTimeout(10_000) { engine.state.first { it.appliedManifest?.version == 1 } } }
+        engine.stop()
     }
 
     @Test

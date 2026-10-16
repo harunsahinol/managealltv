@@ -11,6 +11,7 @@ import { keys } from "../lib/api/keys";
 import { signOut } from "../lib/auth";
 import { isAdmin, ROLE_LABELS } from "../lib/permissions";
 import { NAV_GROUPS } from "./nav";
+import { clearAccountQueries } from "./query-client";
 import { useCurrentUser } from "./session";
 
 /** Brand mark: a tiny TV showing test-card bars. */
@@ -80,7 +81,7 @@ function UserFooter() {
       toast.error(errorMessage(error));
     }
     queryClient.setQueryData(keys.me, null);
-    queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== keys.me[0] });
+    clearAccountQueries(queryClient);
     setPending(false);
     void navigate("/login", { replace: true });
   };

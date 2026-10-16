@@ -11,7 +11,7 @@
 import type { MediaType } from "@prisma/client";
 import { createHash, randomBytes } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { readdir, rename, rm, stat } from "node:fs/promises";
+import { open, readdir, rename, rm, stat } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import sharp from "sharp";
 import { prisma } from "../db";
@@ -100,7 +100,29 @@ interface WorkFiles {
 
 // ------------------------------------------------------------------ images
 
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/**
+ * Whether the file starts like JPEG, PNG or WebP. sharp picks its decoder from the content, not from
+ * the declared tus filetype, so without this an "image/png" upload could be decoded as SVG (librsvg's
+ * XInclude reads other files in the uploads directory into the picture), GIF, TIFF, HEIF and so on.
+ */
+async function isAcceptedImageFile(file: string): Promise<boolean> {
+  const handle = await open(file, "r");
+  try {
+    const { bytesRead, buffer } = await handle.read(Buffer.alloc(12), 0, 12, 0);
+    const head = buffer.subarray(0, bytesRead);
+    const jpeg = head.length >= 3 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+    const png = head.length >= 8 && head.subarray(0, 8).equals(PNG_SIGNATURE);
+    const webp = head.length >= 12 && head.toString("latin1", 0, 4) === "RIFF" && head.toString("latin1", 8, 12) === "WEBP";
+    return jpeg || png || webp;
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function processImage(source: string, out: WorkFiles): Promise<ProcessedOutput> {
+  if (!(await isAcceptedImageFile(source))) throw new MediaProcessingError(MESSAGES.imageUnreadable);
   let info: { width: number; height: number };
   try {
     // failOn "error": accept files with harmless warnings (e.g. a few missing bytes) that viewers show anyway.

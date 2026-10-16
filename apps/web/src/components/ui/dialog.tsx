@@ -50,6 +50,14 @@ export function Dialog({ open, onClose, title, description, children, footer, si
         event.preventDefault();
         if (dismissible) onClose();
       }}
+      onClose={() => {
+        // Browsers may still close a modal on their own: after a prevented cancel, the next Esc without
+        // user activation in between closes it without asking (close-watcher rule), e.g. Esc pressed
+        // twice while a request is pending. React would keep `open` true with nothing on screen, so
+        // the error never shows and the trigger stops working (open stays true, no effect re-runs).
+        const element = ref.current;
+        if (open && element !== null && element.isConnected && !element.open) element.showModal();
+      }}
       onMouseDown={(event) => {
         if (event.target === ref.current && dismissible) onClose();
       }}

@@ -23,6 +23,7 @@ import {
   makeRotatedJpeg,
   makeVideo,
   sha256,
+  tusCreate,
   tusUpload,
   uploadFile,
   videoStreamMd5,
@@ -169,6 +170,27 @@ describe("image processing", () => {
     expect(await exists(uploadPath(uploadId))).toBe(false);
     // Processing a settled media again does nothing.
     expect(await processMedia(mediaId)).toBe("skipped");
+  });
+
+  it("only decodes JPEG, PNG and WebP, whatever the declared type says", async () => {
+    const { client } = await login(app, "editor");
+    // Another user's upload in progress: its tus info file sits next to every other upload.
+    const { client: other } = await login(app, "editor");
+    const pending = await tusCreate(other, 100, { filename: "gizli-plan.mp4", filetype: "video/mp4" });
+    const pendingId = pending.path?.split("/").pop() ?? "";
+    // An SVG would be rendered by librsvg, whose XInclude reads files next to the upload.
+    const svg = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xi="http://www.w3.org/2001/XInclude" width="800" height="100">` +
+        `<text x="10" y="50"><xi:include href="${pendingId}.json" parse="text"/></text></svg>`,
+    );
+    const gif = await sharp({ create: { width: 64, height: 64, channels: 3, background: "#336699" } }).gif().toBuffer();
+    for (const [name, data] of [["afiş.png", svg], ["anim.png", gif]] as const) {
+      const { mediaId } = await tusUpload(client, data, { filename: name, filetype: "image/png" });
+      expect(await processMedia(mediaId)).toBe("failed");
+      const media = await prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
+      expect(media.error).toContain("JPEG, PNG veya WebP");
+      expect(await exists(mediaFilePath(mediaId, "image/jpeg"))).toBe(false);
+    }
   });
 });
 

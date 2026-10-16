@@ -56,10 +56,17 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # The app's pure-logic JUnit 4 tests (tv.managealltv.player.logic). After the upload, so a failing
+      # test still leaves the APK to inspect.
+      - name: App unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: player-core-test-reports
-          path: apps/player-android/player-core/build/reports/tests/
+          name: android-test-reports
+          path: |
+            apps/player-android/player-core/build/reports/tests/
+            apps/player-android/app/build/reports/tests/
           if-no-files-found: ignore

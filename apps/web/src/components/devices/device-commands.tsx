@@ -3,7 +3,7 @@ import { Crosshair, Power, RefreshCw, RotateCw, Volume2 } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
 import { useSendCommand } from "../../lib/api/devices";
 import { errorMessage } from "../../lib/api/errors";
-import { describeCommand } from "../../lib/devices";
+import { commandSentMessage } from "../../lib/devices";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Dialog } from "../ui/dialog";
@@ -100,12 +100,8 @@ export function DeviceCommands({ device }: { device: api.Device }) {
   const run = (command: Command, after?: () => void) => {
     setPendingType(command.type);
     send.mutate(command, {
-      onSuccess: () => {
-        toast.success(
-          device.online
-            ? `${describeCommand(command)} komutu gönderildi.`
-            : `${describeCommand(command)} komutu sıraya alındı; TV bağlandığında iletilecek.`,
-        );
+      onSuccess: (view) => {
+        toast.success(commandSentMessage(view));
         after?.();
       },
       onError: (error) => {

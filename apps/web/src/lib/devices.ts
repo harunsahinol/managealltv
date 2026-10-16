@@ -70,6 +70,18 @@ export function describeCommand(command: Command): string {
   }
 }
 
+/**
+ * Confirmation after sending a command, from the status the server returned: "pending" means it
+ * was not delivered (no WebSocket) and waits for the TV to connect. A TV can still count as online
+ * then, because the HTTP status fallback keeps lastSeenAt fresh while the socket is down.
+ */
+export function commandSentMessage(view: Pick<api.CommandView, "command" | "status">): string {
+  const name = describeCommand(view.command);
+  return view.status === "pending"
+    ? `${name} komutu sıraya alındı; TV bağlandığında iletilecek.`
+    : `${name} komutu gönderildi.`;
+}
+
 export const COMMAND_STATUS_LABELS: Record<api.CommandStatus, string> = {
   pending: "Bekliyor",
   sent: "Gönderildi",

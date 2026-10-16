@@ -10,6 +10,16 @@ function shouldRetry(failureCount: number, error: unknown): boolean {
   return failureCount < 2;
 }
 
+/**
+ * Drops everything cached for the previous account except the session query itself. Needed on
+ * sign-in too, not only on sign-out: when a session expires the panel just redirects to /login, so
+ * the old account's (location-scoped) lists stay cached and the next person signing in on the same
+ * tab would see them, plus a stale 401 notice, until the first refetch finished.
+ */
+export function clearAccountQueries(queryClient: QueryClient): void {
+  queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== keys.me[0] });
+}
+
 export function createQueryClient(): QueryClient {
   const queryClient: QueryClient = new QueryClient({
     queryCache: new QueryCache({

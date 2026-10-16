@@ -3,6 +3,7 @@ import { KeyRound, LogIn } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { BrandMark } from "../app/app-shell";
+import { clearAccountQueries } from "../app/query-client";
 import { Button } from "../components/ui/button";
 import { LoadingState } from "../components/ui/feedback";
 import { Checkbox, Field, FormError, Input } from "../components/ui/form";
@@ -188,6 +189,7 @@ export function LoginPage() {
   const next = safeNextPath(params.get("next"));
 
   const finish = async () => {
+    clearAccountQueries(queryClient);
     await queryClient.invalidateQueries({ queryKey: keys.me });
     void navigate(next, { replace: true });
   };

@@ -134,7 +134,8 @@ değiştiğinde (push / PR) ve elle (`workflow_dispatch`) çalışır:
 1. Temurin JDK 17 + `gradle/actions/setup-gradle` (önbellek, wrapper doğrulaması),
 2. `player-core` testleri,
 3. `./gradlew :app:assembleDebug`,
-4. debug APK'yı **`managealltv-player-debug`** adlı artefakt olarak yükler.
+4. debug APK'yı **`managealltv-player-debug`** adlı artefakt olarak yükler,
+5. uygulamanın saf mantık testleri (`./gradlew :app:testDebugUnitTest`).
 
 APK'yı almak için: GitHub → Actions → ilgili çalışma → *Artifacts* → `managealltv-player-debug`.
 
