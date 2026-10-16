@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No legacy device-admin policies are needed: as Device Owner the app uses
+     addPersistentPreferredActivity (HOME) and reboot, which come with the Device Owner role itself. -->
+<device-admin>
+    <uses-policies />
+</device-admin>

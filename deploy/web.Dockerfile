@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-#
 # Caddy with the built admin panel. Build context = repository root:
 #
 #   docker build -f deploy/web.Dockerfile -t managealltv-web .

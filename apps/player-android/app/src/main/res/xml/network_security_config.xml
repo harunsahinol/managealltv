@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release configuration: HTTPS only. Android 7.0-7.1.0 does not ship ISRG Root X1 (Let's Encrypt),
+     so both Let's Encrypt roots are bundled next to the system store (ARCHITECTURE §6.3).
+     The PEM files are https://letsencrypt.org/certs/isrgrootx1.pem and isrg-root-x2.pem
+     (SHA-256 96:BC:EC:06:…:08:C6 and 69:72:9B:8E:…:14:70). The debug build overrides this file
+     from src/debug to allow plain http for local testing. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/isrg_root_x1" />
+            <certificates src="@raw/isrg_root_x2" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -12,7 +12,9 @@ import { HttpError } from "../lib/errors";
 import { auditAs } from "../services/audit";
 import { createInvite } from "../services/invites";
 
-const USAGE = "Kullanım: pnpm --filter @managealltv/server admin:invite -- --email <e-posta> --name '<Ad Soyad>' [--force]";
+// The Docker image runs this through its `admin-invite` wrapper, which sets the command name to show.
+const COMMAND = process.env.MANAGEALLTV_CLI_COMMAND ?? "pnpm --filter @managealltv/server admin:invite --";
+const USAGE = `Kullanım: ${COMMAND} --email <e-posta> --name '<Ad Soyad>' [--force]`;
 
 function fail(message: string): never {
   process.stderr.write(`${message}\n`);

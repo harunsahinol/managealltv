@@ -1,0 +1,139 @@
+name: CI
+
+# Server, panel and protocol package. The Android player has its own workflow (android.yml).
+on:
+  push:
+    paths-ignore:
+      - "apps/player-android/**"
+      - ".github/workflows/android.yml"
+      - "**/*.md"
+  pull_request:
+    paths-ignore:
+      - "apps/player-android/**"
+      - ".github/workflows/android.yml"
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: protocol + server + web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: managealltv
+          POSTGRES_PASSWORD: managealltv
+          # The server tests refuse any database whose name does not end in "_test".
+          POSTGRES_DB: managealltv_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U managealltv -d managealltv_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      TEST_DATABASE_URL: postgresql://managealltv:managealltv@127.0.0.1:5432/managealltv_test
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      # pnpm in the version pinned by package.json "packageManager". A current corepack first: older
+      # bundled ones may not know the keys newer pnpm releases are signed with.
+      - name: Enable pnpm (corepack)
+        run: |
+          npm install --global corepack@latest
+          corepack enable
+          pnpm --version
+
+      - name: pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      # The media processing tests run the real ffmpeg/ffprobe.
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -version | head -n 1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Protocol — typecheck
+        run: pnpm --filter @managealltv/protocol typecheck
+
+      - name: Protocol — tests
+        run: pnpm --filter @managealltv/protocol test
+
+      - name: Server — Prisma client
+        run: pnpm --filter @managealltv/server db:generate
+
+      - name: Server — typecheck
+        run: pnpm --filter @managealltv/server typecheck
+
+      - name: Server — tests
+        run: pnpm --filter @managealltv/server test
+        env:
+          TEST_LOG_LEVEL: warn
+
+      - name: Web — typecheck
+        run: pnpm --filter @managealltv/web typecheck
+
+      - name: Web — tests
+        run: pnpm --filter @managealltv/web test
+
+      - name: Web — build
+        run: pnpm --filter @managealltv/web build
+
+  docker:
+    name: deployment images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # Required variables only need placeholder values to validate and build.
+      - name: Validate docker-compose.yml
+        working-directory: deploy
+        env:
+          DOMAIN: ci.example.com
+          POSTGRES_PASSWORD: ci
+          BETTER_AUTH_SECRET: ci-secret-that-is-at-least-32-characters-long
+        run: docker compose -f docker-compose.yml config --quiet
+
+      - name: Build server and web images
+        working-directory: deploy
+        env:
+          DOMAIN: ci.example.com
+          POSTGRES_PASSWORD: ci
+          BETTER_AUTH_SECRET: ci-secret-that-is-at-least-32-characters-long
+        run: docker compose -f docker-compose.yml build server web
+
+      # The image must contain what the server needs at runtime.
+      - name: Check server image tools
+        run: |
+          docker run --rm --entrypoint sh managealltv-server:latest -c \
+            'ffmpeg -version | head -n 1 && ffprobe -version | head -n 1 && openssl version && id -un && test -x /usr/local/bin/admin-invite'

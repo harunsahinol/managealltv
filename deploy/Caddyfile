@@ -40,7 +40,8 @@
 		file_server
 	}
 
-	header Strict-Transport-Security "max-age=31536000"
+	# Deferred (">"): replaces the server's own HSTS header on API responses, so there is one value.
+	header >Strict-Transport-Security "max-age=31536000"
 
 	# No access log on purpose: invite and password-reset links carry their one-time token in the
 	# URL (/invite/<token>, /api/invites/<token>). The server logs errors itself.

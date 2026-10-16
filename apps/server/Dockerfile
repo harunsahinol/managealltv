@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-#
 # ManageAllTV API server (Hono + WebSocket + media processing). Build context = repository root:
 #
 #   docker build -f apps/server/Dockerfile -t managealltv-server .
@@ -63,7 +61,7 @@ WORKDIR /app/apps/server
 # A new named volume takes over this directory's owner, so the unprivileged user can write to it.
 RUN mkdir -p /data/media \
  && chown node:node /data/media \
- && printf '#!/bin/sh\ncd /app/apps/server && exec node --import tsx src/cli/create-admin-invite.ts "$@"\n' > /usr/local/bin/admin-invite \
+ && printf '#!/bin/sh\ncd /app/apps/server && MANAGEALLTV_CLI_COMMAND=admin-invite exec node --import tsx src/cli/create-admin-invite.ts "$@"\n' > /usr/local/bin/admin-invite \
  && chmod 755 /usr/local/bin/admin-invite
 
 # The "node" user (uid 1000) of the official image.
