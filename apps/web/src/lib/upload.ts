@@ -6,18 +6,42 @@ export const UPLOAD_CHUNK_SIZE = 50 * 1024 * 1024;
 /** Delays between automatic retries of a failed chunk (ms). */
 export const UPLOAD_RETRY_DELAYS = [0, 1_000, 3_000, 5_000, 10_000, 20_000];
 
-const VIDEO_EXTENSIONS = ["mp4", "m4v", "mov", "mkv", "webm", "avi", "mpg", "mpeg", "ts", "wmv", "3gp"];
-const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff", "heic", "heif", "avif"];
+/**
+ * The formats the server accepts (apps/server/src/services/media.ts ACCEPTED_UPLOAD_TYPES and its aliases).
+ * Anything else would only be refused with 415 once the upload starts.
+ */
+const ACCEPTED_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/pjpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+  "video/x-m4v",
+  "video/quicktime",
+  "video/x-matroska",
+  "video/mkv",
+  "application/x-matroska",
+  "video/webm",
+]);
+const ACCEPTED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "mp4", "m4v", "mov", "mkv", "webm"]);
+
+/** Value for the file input's accept attribute. */
+export const UPLOAD_ACCEPT = [...ACCEPTED_TYPES, ...[...ACCEPTED_EXTENSIONS].map((extension) => `.${extension}`)].join(",");
+
+/** Shown next to rejected files. */
+export const ACCEPTED_FORMATS_TEXT = "JPEG, PNG, WebP resimler ve MP4, MOV, MKV, WebM videolar";
 
 /**
- * Only images and videos can be shown on a TV. Browsers leave `type` empty for some containers
- * (e.g. .mkv), so the extension decides when the type is missing.
+ * Browsers leave `type` empty for some containers (e.g. .mkv), so the extension decides when the type is
+ * missing or generic.
  */
 export function isAcceptedMediaFile(file: { name: string; type: string }): boolean {
-  if (file.type.startsWith("image/") || file.type.startsWith("video/")) return true;
-  if (file.type !== "" && file.type !== "application/octet-stream") return false;
+  const type = file.type.toLowerCase();
+  if (ACCEPTED_TYPES.has(type)) return true;
+  if (type !== "" && type !== "application/octet-stream") return false;
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-  return VIDEO_EXTENSIONS.includes(extension) || IMAGE_EXTENSIONS.includes(extension);
+  return ACCEPTED_EXTENSIONS.has(extension);
 }
 
 /** Turkish message for a failed tus request (status 0/null = the connection itself failed). */

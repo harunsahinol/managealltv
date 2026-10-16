@@ -60,6 +60,12 @@ describe("uploads", () => {
     expect(isAcceptedMediaFile({ name: "film.MKV", type: "" })).toBe(true);
     expect(isAcceptedMediaFile({ name: "rapor.pdf", type: "application/pdf" })).toBe(false);
     expect(isAcceptedMediaFile({ name: "notlar.txt", type: "" })).toBe(false);
+    // Formats the server would refuse with 415 are stopped before the upload starts.
+    expect(isAcceptedMediaFile({ name: "anim.gif", type: "image/gif" })).toBe(false);
+    expect(isAcceptedMediaFile({ name: "foto.heic", type: "" })).toBe(false);
+    expect(isAcceptedMediaFile({ name: "eski.avi", type: "video/x-msvideo" })).toBe(false);
+    expect(isAcceptedMediaFile({ name: "klip.MOV", type: "video/quicktime" })).toBe(true);
+    expect(isAcceptedMediaFile({ name: "resim.webp", type: "application/octet-stream" })).toBe(true);
   });
 
   it("maps tus failures to Turkish messages", () => {

@@ -108,13 +108,22 @@ export async function listCommands(deviceId: string, limit = 50): Promise<api.Co
 
 async function deliver(row: { id: string; deviceId: string; payload: Prisma.JsonValue }): Promise<boolean> {
   const command = Command.safeParse(row.payload);
-  if (!command.success) return false;
-  if (!deviceHub.send(row.deviceId, { type: "command", id: row.id, command: command.data })) return false;
-  await prisma.command.updateMany({
+  if (!command.success || !deviceHub.isConnected(row.deviceId)) return false;
+  // Claim the row before sending: createCommand and a reconnect's deliverPendingCommands can both read
+  // the same pending row, and sending first would let both deliver it (a reboot would run twice).
+  const sentAt = new Date();
+  const claimed = await prisma.command.updateMany({
     where: { id: row.id, status: "pending" },
-    data: { status: "sent", sentAt: new Date() },
+    data: { status: "sent", sentAt },
   });
-  return true;
+  if (claimed.count !== 1) return false;
+  if (deviceHub.send(row.deviceId, { type: "command", id: row.id, command: command.data })) return true;
+  // The socket went away in between: put it back so the next connect delivers it.
+  await prisma.command.updateMany({
+    where: { id: row.id, status: "sent", sentAt },
+    data: { status: "pending", sentAt: null },
+  });
+  return false;
 }
 
 /** Creates a command; it is sent immediately when the device is connected, otherwise stays pending. */

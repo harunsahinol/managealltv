@@ -89,8 +89,10 @@ class PlaybackController(
             }
 
             override fun onRenderedFirstFrame() {
-                // The new video is on screen; only now uncover it, so there is no black gap.
-                hideImages()
+                // The new video is on screen; only now uncover it, so there is no black gap. A late first
+                // frame of a video that was already replaced by an image (playlist switch between prepare()
+                // and the first frame) must not fade that image out.
+                if (videoOutcome != null) hideImages()
             }
         }
 

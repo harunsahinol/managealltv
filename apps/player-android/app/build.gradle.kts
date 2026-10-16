@@ -29,15 +29,27 @@ android {
         // landscape orientation on large screens and drops the edge-to-edge opt-out. Raise it only
         // after the player has been checked on the pilot TVs.
         targetSdk = 35
-        // Bump both for every APK that is installed on TVs; the panel shows them per device.
-        versionCode = 1
-        versionName = "0.1.0"
+        // Every CI build gets a higher versionCode (the workflow's run number), so a newer APK always
+        // installs over an older one and the panel shows which build each TV runs. Local builds are 1.
+        val buildNumber = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull?.toIntOrNull() ?: 1
+        versionCode = buildNumber
+        versionName = "0.1.$buildNumber"
 
         val escapedUrl = defaultServerUrl.replace("\\", "\\\\").replace("\"", "\\\"")
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"$escapedUrl\"")
     }
 
     signingConfigs {
+        // A fixed debug key checked into the repo. Without it every CI runner generates its own debug
+        // key, so a newer APK could not be installed over an older one (signature mismatch) and a Device
+        // Owner TV could not be updated at all. Fine for the pilot; use release signing (below) for
+        // production, since anyone with this repo can sign an update with this key.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         releaseKeystorePath?.let { path ->
             create("release") {
                 storeFile = file(path)

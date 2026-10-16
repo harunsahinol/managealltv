@@ -168,6 +168,15 @@ export MTV_KEYSTORE_FILE=/yol/managealltv.jks MTV_KEYSTORE_PASSWORD=… MTV_KEY_
 Bir TV'ye kurulu APK'yı güncellerken **aynı anahtarla** imzalanmış APK kullanılmalıdır (Android farklı
 imzalı güncellemeyi reddeder). Debug ve release APK'ları birbirinin üzerine kurulamaz.
 
+**Debug imzası sabittir:** debug APK, depodaki `app/debug.keystore` ile imzalanır. Bu sayede her CI
+derlemesi aynı imzayı taşır ve yeni APK eskisinin üzerine (`adb install -r`) kurulabilir; Device Owner
+olan TV'ler de güncellenebilir. Depoya erişimi olan herkes bu anahtarla güncelleme imzalayabileceği için
+bu düzen pilot içindir; kalıcı kullanımda release imzasına (yukarıda) geçin.
+
+**Sürüm numarası:** CI'da `versionCode` GitHub çalışma numarasıdır (`versionName` = `0.1.<numara>`). Her
+yeni derleme bir öncekinden büyük olduğu için güncelleme olarak kurulur ve panel her TV'nin hangi
+derlemeyi çalıştırdığını gösterir. Yerel derlemeler `1` olur.
+
 ## TV'ye kurulum
 
 Her TV için [ARCHITECTURE.md §14](../../docs/ARCHITECTURE.md#14-tv-kurulum-kontrol-listesi)

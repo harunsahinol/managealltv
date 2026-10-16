@@ -22,10 +22,15 @@ export function isValidTimeZone(timeZone: string): boolean {
   }
 }
 
-function assertTimeZone(timeZone: string | undefined): void {
-  if (timeZone !== undefined && !isValidTimeZone(timeZone)) {
-    throw badRequest(`Geçersiz saat dilimi: ${timeZone} (ör. Europe/Istanbul).`);
-  }
+/**
+ * Validates and canonicalises a time zone. Intl accepts any letter case ("europe/istanbul"), but the
+ * player resolves the manifest's zone with the case-sensitive java.time ZoneId, so the stored value
+ * must be the canonical IANA spelling.
+ */
+function canonicalTimeZone<T extends string | undefined>(timeZone: T): T {
+  if (timeZone === undefined) return timeZone;
+  if (!isValidTimeZone(timeZone)) throw badRequest(`Geçersiz saat dilimi: ${timeZone} (ör. Europe/Istanbul).`);
+  return new Intl.DateTimeFormat("en-US", { timeZone }).resolvedOptions().timeZone as T;
 }
 
 export function toLocationView(location: Location & { _count: { devices: number } }): api.Location {
@@ -54,8 +59,8 @@ export function locationsRoutes() {
   });
 
   router.post("/", requireRole("admin"), validate("json", api.LocationInput), async (c) => {
-    const body = c.req.valid("json");
-    assertTimeZone(body.timezone);
+    const input = c.req.valid("json");
+    const body = { ...input, timezone: canonicalTimeZone(input.timezone) };
     const location = await prisma.location.create({ data: body, include: withCount });
     await audit(c, {
       action: "location.create",
@@ -68,8 +73,8 @@ export function locationsRoutes() {
 
   router.patch("/:id", requireRole("admin"), validate("param", IdParam), validate("json", api.LocationInput.partial()), async (c) => {
     const { id } = c.req.valid("param");
-    const body = c.req.valid("json");
-    assertTimeZone(body.timezone);
+    const input = c.req.valid("json");
+    const body = { ...input, timezone: canonicalTimeZone(input.timezone) };
     const before = await prisma.location.findUnique({ where: { id } });
     if (!before) throw notFound("Konum bulunamadı");
     const location = await prisma.location.update({ where: { id }, data: body, include: withCount });

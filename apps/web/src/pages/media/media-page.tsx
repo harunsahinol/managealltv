@@ -16,7 +16,7 @@ import { errorMessage } from "../../lib/api/errors";
 import { mediaFileUrl, useDeleteMedia, useMediaList, useRenameMedia } from "../../lib/api/media";
 import { formatBytes, formatClockMs, formatDateTime } from "../../lib/format";
 import { canDeleteMedia, canEditContent } from "../../lib/permissions";
-import { isAcceptedMediaFile } from "../../lib/upload";
+import { ACCEPTED_FORMATS_TEXT, isAcceptedMediaFile, UPLOAD_ACCEPT } from "../../lib/upload";
 import { UploadPanel } from "./upload-panel";
 import { useUploads } from "./upload-store";
 
@@ -282,7 +282,7 @@ export function MediaPage() {
                 ref={fileInput}
                 type="file"
                 multiple
-                accept="image/*,video/*"
+                accept={UPLOAD_ACCEPT}
                 className="hidden"
                 onChange={(event) => {
                   addFiles(Array.from(event.target.files ?? []));
@@ -310,7 +310,7 @@ export function MediaPage() {
               </Button>
             }
           >
-            Yalnız resim ve video yüklenebilir: {rejected.join(", ")}
+            Yalnız {ACCEPTED_FORMATS_TEXT} yüklenebilir: {rejected.join(", ")}
           </Alert>
         )}
 
