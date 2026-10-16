@@ -175,6 +175,12 @@ class MainActivity : ComponentActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { AppStateStore.state.collect { render(it) } }
                 launch {
+                    // The info panel also shows the last playback error, which lives in the playback report.
+                    AppStateStore.playback.collect {
+                        if (infoOverlay.isVisible) infoText.setTextIfChanged(buildInfoText(AppStateStore.state.value))
+                    }
+                }
+                launch {
                     AppStateStore.state
                         .map { PlaybackInputs(it.phase, it.sync?.appliedManifest, it.reloadSerial) }
                         .distinctUntilChanged()

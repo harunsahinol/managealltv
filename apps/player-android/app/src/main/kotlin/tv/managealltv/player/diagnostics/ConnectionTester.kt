@@ -90,14 +90,25 @@ class ConnectionTester(context: Context, private val http: OkHttpClient) {
             steps += Step(context.getString(R.string.conn_step_dns), Outcome.OK, context.getString(R.string.conn_dns_ok, host, shown, dnsMs))
             emit(snapshot(finished = false, success = false))
 
-            val socket = Socket()
+            // Like OkHttp, try the addresses in turn (an IPv6 address may be unreachable on IPv4-only Wi-Fi).
             val tcpStart = SystemClock.elapsedRealtime()
-            try {
-                socket.connect(InetSocketAddress(addresses.first(), baseUrl.port), TIMEOUT_MS)
-                socket.soTimeout = TIMEOUT_MS
-            } catch (e: IOException) {
-                socket.close()
-                steps += Step(context.getString(R.string.conn_step_tcp), Outcome.FAILED, ErrorText.describe(context, e))
+            var socket: Socket? = null
+            var lastError: IOException? = null
+            for (address in addresses.take(MAX_ADDRESSES)) {
+                val candidate = Socket()
+                try {
+                    candidate.connect(InetSocketAddress(address, baseUrl.port), TIMEOUT_MS)
+                    candidate.soTimeout = TIMEOUT_MS
+                    socket = candidate
+                    break
+                } catch (e: IOException) {
+                    candidate.close()
+                    lastError = e
+                }
+            }
+            if (socket == null) {
+                val detail = lastError?.let { ErrorText.describe(context, it) } ?: context.getString(R.string.error_timeout)
+                steps += Step(context.getString(R.string.conn_step_tcp), Outcome.FAILED, detail)
                 emit(snapshot(finished = true, success = false))
                 return@flow
             }
@@ -236,6 +247,7 @@ class ConnectionTester(context: Context, private val http: OkHttpClient) {
 
     private companion object {
         const val TIMEOUT_MS = 10_000
+        const val MAX_ADDRESSES = 3
         const val MAX_BODY_CHARS = 2_000
         val TURKISH: Locale = Locale.forLanguageTag("tr-TR")
     }

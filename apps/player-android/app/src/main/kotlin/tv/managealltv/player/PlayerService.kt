@@ -16,6 +16,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -86,6 +87,19 @@ class PlayerService : LifecycleService() {
     /** Ids of recently executed commands; the server may deliver a pending command again on reconnect. */
     private val recentCommandIds = ArrayDeque<String>()
 
+    /**
+     * A bug in one session coroutine must not crash the process (and with it the screen); log it and
+     * start the session again after a pause.
+     */
+    private val sessionFailureHandler =
+        CoroutineExceptionHandler { _, error ->
+            CoreLog.e(TAG, "Unexpected failure in the session; restarting it", error)
+            lifecycleScope.launch {
+                delay(SESSION_RESTART_DELAY_MS)
+                startSession()
+            }
+        }
+
     private val screenReceiver =
         object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -150,7 +164,7 @@ class PlayerService : LifecycleService() {
         }
         val job = SupervisorJob(lifecycleScope.coroutineContext[Job])
         sessionJob = job
-        val scope = CoroutineScope(job + Dispatchers.Default)
+        val scope = CoroutineScope(job + Dispatchers.Default + sessionFailureHandler)
         // hardwareId may write prefs on first use: not on the main thread.
         scope.launch(Dispatchers.IO) {
             val hardwareId = prefs.hardwareId
@@ -167,6 +181,8 @@ class PlayerService : LifecycleService() {
             scope.launch { runPairing(baseUrl) }
             return
         }
+        // Until the session is up (manifest read from disk) show "Başlatılıyor", not a stale code.
+        AppStateStore.update { it.copy(phase = Phase.STARTING, pairing = PairingUi()) }
         scope.launch(Dispatchers.IO) {
             val cache =
                 try {
@@ -596,6 +612,7 @@ class PlayerService : LifecycleService() {
         private const val RATE_LIMIT_WAIT_MS = 60_000L
         private const val MAX_PAIRING_WAIT_MS = 16 * 60_000L
         private const val CACHE_RETRY_MS = 30_000L
+        private const val SESSION_RESTART_DELAY_MS = 30_000L
         private const val RESULT_FLUSH_MS = 1_000L
         private const val IDENTIFY_CHECK_MS = 1_500L
         private const val WAKE_RETRY_MS = 3_000L

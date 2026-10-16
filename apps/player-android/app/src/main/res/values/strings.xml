@@ -19,7 +19,7 @@
     <!-- Pairing -->
     <string name="pairing_title">Bu TV\'yi eşleştirin</string>
     <string name="pairing_code_placeholder">— — —</string>
-    <string name="pairing_instructions">1. Yönetim panelinde Cihazlar → TV ekle\'yi açın.\n2. Yukarıdaki 6 haneli kodu girin.\n3. TV\'ye bir ad verin ve konumunu seçin.</string>
+    <string name="pairing_instructions">1. Yönetim panelinde Ekranlar → TV ekle\'yi açın.\n2. Yukarıdaki 6 haneli kodu girin.\n3. TV\'ye bir ad verin ve konumunu seçin.</string>
     <string name="pairing_requesting">Eşleştirme kodu alınıyor…</string>
     <string name="pairing_waiting">Kod panele girilmeyi bekliyor. Süresi dolarsa yeni kod otomatik alınır.</string>
     <string name="pairing_failed_retry">Kod alınamadı: %1$s. %2$d saniye sonra yeniden denenecek.</string>
