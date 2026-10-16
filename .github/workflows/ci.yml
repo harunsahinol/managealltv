@@ -53,6 +53,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          # setup-node v5 turns on its own pnpm cache when package.json has "packageManager", but pnpm is
+          # only enabled in the next step, so that cache step fails. The pnpm store is cached below instead.
+          package-manager-cache: false
 
       # pnpm in the version pinned by package.json "packageManager". A current corepack first: older
       # bundled ones may not know the keys newer pnpm releases are signed with.
